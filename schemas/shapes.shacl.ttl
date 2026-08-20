@@ -1,4 +1,3 @@
-```
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix roots: <https://rootsofbrazil.org/ontology#> .
@@ -87,4 +86,3 @@ roots:TipoRelacaoShape a sh:PropertyShape ;
             "PREPARADO_COM" "OCORRE_EM" "ORIGINARIO_DE" "PATRIMONIO_DE"
             "LOCALIZADO_EM_BIOMA" "DERIVA_DE" "VARIANTE_REGIONAL" "SIMILAR_A" ) ;
     sh:message "tipo_relacao deve ser um dos 12 valores do domínio. Dicionário v1.2, Seção 21." .
-```

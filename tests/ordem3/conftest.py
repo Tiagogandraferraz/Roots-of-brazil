@@ -26,18 +26,8 @@ CONF = "🟢 Confirmado em várias fontes"
 
 
 def le_ddl() -> str:
-    """Lê o DDL da Ordem 2.
-
-    Remove cercas markdown (```sql / ```) se houver: parte dos arquivos do
-    repositório foi commitada com a cerca de bloco de código junto. Enquanto
-    isso não é corrigido, ler o DDL exige tolerá-la.
-    """
-    linhas = DDL.read_text(encoding="utf-8").splitlines()
-    if linhas and linhas[0].startswith("```"):
-        linhas = linhas[1:]
-    if linhas and linhas[-1].strip() == "```":
-        linhas = linhas[:-1]
-    return "\n".join(linhas)
+    """Lê o DDL da Ordem 2, que é o schema real da fonte da carga."""
+    return DDL.read_text(encoding="utf-8")
 
 
 @pytest.fixture

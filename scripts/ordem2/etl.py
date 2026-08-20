@@ -1,4 +1,3 @@
-```python
 """
 Roots of Brazil — ETL da Ordem 2.
 
@@ -247,4 +246,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-```

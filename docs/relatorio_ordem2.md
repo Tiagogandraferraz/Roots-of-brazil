@@ -1,4 +1,3 @@
-```
 # Relatório — Ordem 2 (Implementação do Banco Relacional)
 Data: 2026-08-19
 
@@ -42,4 +41,3 @@ O primeiro `CHECK(confiabilidade IN (...))` (com os 4 valores exatos do enum) **
 - Variante PostgreSQL (`schemas/ddl_postgresql.sql`, com `CREATE TYPE ENUM` nativo e `MATERIALIZED VIEW` real) **não foi escrita nesta rodada** — o DDL SQLite serviu de prova de conceito executável; adaptar para PostgreSQL é mecânico mas não foi priorizado dado o tempo, fica registrado como próximo passo.
 
 ## Status: Ordem 2 EXECUTADA E VALIDADA (SQLite) — variante PostgreSQL e models SQLAlchemy/Alembic pendentes de ambiente com rede
-```

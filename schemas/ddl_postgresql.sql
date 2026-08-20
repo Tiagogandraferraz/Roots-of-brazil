@@ -1,4 +1,3 @@
-```sql
 -- Roots of Brazil — DDL PostgreSQL (Ordem 2)
 -- Implementa literalmente o Dicionário de Dados Oficial v1.2, Seções 12-25.
 -- Baseline esperado após ETL: 381 objetos (130/136/38/17/18/35/7 + 0 LivroFonte), 1.585 relações, 18 órfãos, 0 duplicidades.
@@ -361,4 +360,3 @@ ORDER BY n_relacoes DESC;
 
 -- REFRESH MATERIALIZED VIEW mv_estatisticas_corpus; -- executar após cada lote de escrita (Seção 25.5)
 -- REFRESH MATERIALIZED VIEW mv_grafo_agregado;
-```

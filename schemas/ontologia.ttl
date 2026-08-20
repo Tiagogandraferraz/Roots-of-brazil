@@ -1,4 +1,3 @@
-```
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -188,4 +187,3 @@ roots:peso a owl:DatatypeProperty ; rdfs:range xsd:decimal ;
     rdfs:comment "0.0 a 1.0. Propriedade da relação (aresta), não de uma classe de entidade. Dicionário v1.2, Seção 20." .
 roots:metodoCalculoPeso a owl:DatatypeProperty ; rdfs:range xsd:string ;
     rdfs:comment "Documenta como o peso foi obtido. Dicionário v1.2, Seção 20." .
-```

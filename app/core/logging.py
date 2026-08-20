@@ -1,4 +1,3 @@
-```python
 """
 Logging estruturado em JSON — Roots of Brazil (Seção 8 do Manual de Execução).
 
@@ -62,4 +61,3 @@ def configure_logging(level: str = "INFO") -> None:
 
 def get_logger(name: str) -> RootsLogger:
     return logging.getLogger(name)  # type: ignore[return-value]
-```
