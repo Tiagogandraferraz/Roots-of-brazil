@@ -71,7 +71,7 @@ Os testes offline não são de fachada: eles **releem `schemas/ontologia.ttl`** 
 ### 1. `docker-compose.yml` estava com o YAML inválido
 O arquivo commitado começa com uma cerca markdown (```` ``` ````) e termina com outra. Como YAML, isso não sobe: `docker compose up` falha na leitura. Corrigido nesta Ordem, junto com a configuração do serviço.
 
-**Este não é um caso isolado — ver "Pendência aberta" no fim do relatório.**
+**Este não era um caso isolado — ver "Defeito das Ordens 0-2" no fim do relatório.**
 
 ### 2. Serviço `neo4j`: healthcheck media a coisa errada
 O healthcheck original era `wget --spider http://localhost:7474`. O servidor responde na porta HTTP **antes** de aceitar Cypher, então `depends_on: condition: service_healthy` liberava a API contra um banco que ainda não consultava. Trocado por uma consulta real via Bolt (`cypher-shell 'RETURN 1'`), com `start_period: 60s` para cobrir a criação dos stores na primeira subida.
@@ -85,8 +85,10 @@ Escolhida a Community, apenas **constraints de unicidade de nó** são aplicáve
 
 O Cypher equivalente do Enterprise fica registrado em `CONSTRAINTS_ENTERPRISE`, **não executado** — emitir um comando que a edição em uso rejeita daria a falsa impressão de que a regra está sendo aplicada pelo banco. Mesma estratégia que a Ordem 2 adotou para a FK polimórfica.
 
-### 4. "914+ relações ontológicas" não corresponde a nenhum número do projeto
-A Ordem foi pedida citando "as 914+ relações ontológicas". Nenhum artefato do projeto tem esse número. Os números documentados são **1.585 relações** (instâncias, Relatório de Auditoria Sprint 2, conferidas por `mv_grafo_agregado` na Ordem 2) e **12 tipos** de relação (`owl:ObjectProperty` na ontologia, 10 com instância + 2 reservados). O modelo foi construído sobre os números documentados; nada foi ajustado para chegar a 914. Se 914 vier de uma fonte que não está no repositório, vale reconciliar antes da carga real.
+### 4. "914+ relações ontológicas" — divergência levantada e RESOLVIDA
+A Ordem foi pedida citando "as 914+ relações ontológicas". Nenhum artefato do projeto tem esse número, e o modelo foi construído sobre os documentados: **1.585 relações** (instâncias, Relatório de Auditoria Sprint 2, conferidas por `mv_grafo_agregado` na Ordem 2) e **12 tipos** de relação (`owl:ObjectProperty` na ontologia, 10 com instância + 2 reservados). Nada foi ajustado para chegar a 914.
+
+**Resolução:** confirmado pelo responsável do projeto que 1.585 é o número correto e oficial (baseline da Auditoria Sprint 2, documentado no Manual de Sprint — Livro 2, Ordens 0-2) e que "914+" foi erro de redação do pedido, sem lastro em nenhum documento. Descartado. O baseline em `app/models/grafo.py` já era o correto e permanece inalterado.
 
 ## Decisões de modelagem documentadas
 1. **`MERGE`, nunca `CREATE`.** A carga é idempotente: rodar duas vezes não duplica nó nem aresta. Nós entram por `MERGE (n:ObjetoRoots {id})`; arestas por `MERGE (o)-[r:TIPO {rel_id}]->(d)`. Testado em `test_carga_e_idempotente`.
@@ -126,17 +128,31 @@ python scripts/ordem3/etl_neo4j.py --execute
 pytest tests/ordem3/test_carga_neo4j.py -v
 ```
 
-## Pendência aberta — fora do escopo desta Ordem, mas bloqueante
-**23 dos arquivos versionados estão com cercas de bloco markdown (```` ``` ````) na primeira e na última linha**, incluindo todo o código Python das Ordens 0 a 2, os schemas, o `mkdocs.yml`, o `alembic.ini` e os relatórios anteriores. Consequências reais:
+## Defeito das Ordens 0-2 — detectado aqui, corrigido em commit separado
+**23 dos arquivos versionados estavam com cercas de bloco markdown (```` ``` ````) na primeira e na última linha**, incluindo todo o código Python das Ordens 0 a 2, os schemas, o `mkdocs.yml`, o `alembic.ini` e os relatórios anteriores. Consequências reais:
 
-- nenhum módulo afetado importa (`SyntaxError` na linha 1) — `app/main.py`, `app/core/logging.py`, `alembic/env.py`, `scripts/ordem2/etl.py`;
-- `tests/ordem1/` e `tests/ordem2/` não são sequer coletados pelo pytest;
-- o build da imagem e o workflow de CI (`.github/workflows/ci.yml`) não têm como passar.
+- nenhum módulo afetado importava (`SyntaxError` na linha 1) — `app/main.py`, `app/core/logging.py`, `alembic/env.py`, `scripts/ordem2/etl.py`;
+- `tests/ordem1/` e `tests/ordem2/` não eram sequer coletados pelo pytest;
+- o build da imagem e o workflow de CI (`.github/workflows/ci.yml`) não tinham como passar.
 
-Esta Ordem corrigiu apenas `docker-compose.yml`, por ser item explícito do escopo (4), e escreveu todos os arquivos novos sem cerca. Os 22 restantes foram deixados intactos: são entregas das Ordens 0-2 e a correção deve ser registrada como tal, não embutida em silêncio na Ordem 3. `tests/ordem3/conftest.py` tolera a cerca ao ler `schemas/ddl_sqlite.sql`, com comentário explicando que é contorno temporário.
+O `docker-compose.yml` foi corrigido dentro da Ordem 3, por ser item explícito do escopo (4). Os **22 restantes foram corrigidos em commit separado**, marcado como correção de defeito das Ordens 0-2 — não como parte do escopo desta Ordem. Com o defeito sanado, o contorno que `tests/ordem3/conftest.py` mantinha para ler `schemas/ddl_sqlite.sql` foi removido no mesmo commit.
 
-A correção é mecânica (remover a primeira e a última linha de cada arquivo) e pode ser feita em um commit — aguardando decisão.
+Validação da correção, por tipo de arquivo:
 
-Na mesma linha, o `nav` do `mkdocs.yml` está defasado desde a Ordem 1: lista até a Ordem 0, não inclui os relatórios das Ordens 1 e 2, e aponta para `relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md`, que não existe no repositório. Este relatório **não** foi acrescentado ao `nav` — acrescentar uma entrada a um arquivo que hoje é YAML inválido e cuja navegação já quebra em dois pontos só esconderia o problema. Vale corrigir junto com as cercas.
+| Tipo | Verificação | Resultado |
+|---|---|---|
+| Python (7 arquivos) | `py_compile` | ✅ todos compilam |
+| YAML (`mkdocs.yml`) | `yaml.safe_load` | ✅ parseia |
+| JSON-LD (`context.jsonld`) | `json.load` | ✅ parseia |
+| INI (`alembic.ini`) | `configparser` | ✅ parseia, 3+ seções |
+| SQL (`ddl_sqlite.sql`) | `executescript` em SQLite | ✅ 9 tabelas + 3 views criadas |
+| Suíte completa | `pytest tests/` | ✅ 59 passaram, 19 puladas |
+| `tests/ordem1/` (antes: não coletado) | `pytest` | ✅ 5 passaram |
+| Repositório inteiro | `ruff check .` | ✅ limpo (antes nem parseava) |
+
+Nenhum conteúdo foi alterado além da remoção das duas linhas de cerca por arquivo. As cercas internas legítimas (blocos de código dentro de `CONTRIBUTING.md` e `docs/relatorio_ordem2.md`) foram preservadas — conferido antes da edição que só havia pares balanceados.
+
+## Pendência que permanece aberta
+O `nav` do `mkdocs.yml` está defasado desde a Ordem 1: lista até a Ordem 0, não inclui os relatórios das Ordens 1, 2 e 3, e aponta para `relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md`, que não existe no repositório. O arquivo agora é YAML válido, mas a navegação continua quebrada. Não foi corrigido aqui porque resolver a entrada órfã exige decidir entre criar o relatório da Ordem -2 ou remover a linha — decisão de conteúdo, não de sintaxe.
 
 ## Status: Ordem 3 IMPLEMENTADA E VALIDADA OFFLINE — carga real e testes de integração aguardando confirmação e um Neo4j no ar
