@@ -1,0 +1,49 @@
+{
+  "data_auditoria": "2026-08-20",
+  "documentos_auditados": [
+    {
+      "documento": "index.md",
+      "caminho": "docs/index.md",
+      "versao": "N/A",
+      "status": "corrente",
+      "inconsistencias_encontradas": []
+    },
+    {
+      "documento": "relatorio_ordem-1.md",
+      "caminho": "docs/relatorio_ordem-1.md",
+      "versao": "N/A",
+      "status": "corrente",
+      "inconsistencias_encontradas": []
+    },
+    {
+      "documento": "relatorio_ordem0.md",
+      "caminho": "docs/relatorio_ordem0.md",
+      "versao": "N/A",
+      "status": "corrente",
+      "inconsistencias_encontradas": []
+    },
+    {
+      "documento": "relatorio_ordem1.md",
+      "caminho": "docs/relatorio_ordem1.md",
+      "versao": "N/A",
+      "status": "corrente",
+      "inconsistencias_encontradas": []
+    },
+    {
+      "documento": "relatorio_ordem2.md",
+      "caminho": "docs/relatorio_ordem2.md",
+      "versao": "N/A",
+      "status": "corrente",
+      "inconsistencias_encontradas": []
+    },
+    {
+      "documento": "relatorio_ordem-2_consistencia.md",
+      "caminho": "docs/relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md",
+      "versao": "N/A",
+      "status": "N/A",
+      "inconsistencias_encontradas": [
+        "Referenciado em mkdocs.yml (nav) mas o arquivo não existe no repositório."
+      ]
+    }
+  ]
+}
