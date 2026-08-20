@@ -1,0 +1,67 @@
+```
+{
+  "@context": {
+    "roots": "https://rootsofbrazil.org/ontology#",
+    "schema": "https://schema.org/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+
+    "id": "roots:id",
+    "uuid": "roots:uuid",
+    "slug": "schema:identifier",
+    "createdAt": { "@id": "roots:createdAt", "@type": "xsd:dateTime" },
+    "updatedAt": { "@id": "roots:updatedAt", "@type": "xsd:dateTime" },
+    "version": "roots:version",
+    "confiabilidade": "roots:confiabilidade",
+
+    "nome_pt": "schema:name",
+    "nome_en": "roots:nome_en",
+    "nome_es": "roots:nome_es",
+    "nome_fr": "roots:nome_fr",
+    "nome_it": "roots:nome_it",
+    "nome_de": "roots:nome_de",
+    "nome_ja": "roots:nome_ja",
+    "nome_zh": "roots:nome_zh",
+    "descricao_pt": "schema:description",
+    "descricao_en": "roots:descricao_en",
+    "descricao_es": "roots:descricao_es",
+
+    "macrogrupo": "roots:macrogrupo",
+    "grupo": "roots:grupo",
+    "ordemTaxonomica": "roots:ordemTaxonomica",
+    "familia": "roots:familia",
+    "classe": "roots:classe",
+    "categoria": "schema:category",
+    "subcategoria": "roots:subcategoria",
+
+    "latitude": "schema:latitude",
+    "longitude": "schema:longitude",
+    "boundingBox": "roots:boundingBox",
+    "geometry": "roots:geometry",
+
+    "Ingrediente": { "@id": "roots:Ingrediente", "@type": "@id" },
+    "Receita": { "@id": "roots:Receita", "@type": "@id", "sameAs": "schema:Recipe" },
+    "Tecnica": { "@id": "roots:Tecnica", "@type": "@id" },
+    "Povo": { "@id": "roots:Povo", "@type": "@id", "sameAs": "schema:PeopleAudience" },
+    "Territorio": { "@id": "roots:Territorio", "@type": "@id", "sameAs": "schema:AdministrativeArea" },
+    "Patrimonio": { "@id": "roots:Patrimonio", "@type": "@id" },
+    "Bioma": { "@id": "roots:Bioma", "@type": "@id", "sameAs": "schema:Place" },
+    "LivroFonte": { "@id": "roots:LivroFonte", "@type": "@id", "sameAs": "schema:Book" },
+
+    "usaIngrediente": { "@id": "roots:USA_INGREDIENTE", "@type": "@id", "sameAs": "schema:recipeIngredient" },
+    "associadoAPovo": { "@id": "roots:ASSOCIADO_A_POVO", "@type": "@id" },
+    "cultivadoEm": { "@id": "roots:CULTIVADO_EM", "@type": "@id" },
+    "utilizaTecnica": { "@id": "roots:UTILIZA_TECNICA", "@type": "@id" },
+    "preparadoCom": { "@id": "roots:PREPARADO_COM", "@type": "@id" },
+    "ocorreEm": { "@id": "roots:OCORRE_EM", "@type": "@id", "sameAs": "schema:contentLocation" },
+    "originarioDe": { "@id": "roots:ORIGINARIO_DE", "@type": "@id" },
+    "patrimonioDe": { "@id": "roots:PATRIMONIO_DE", "@type": "@id" },
+    "localizadoEmBioma": { "@id": "roots:LOCALIZADO_EM_BIOMA", "@type": "@id" },
+    "derivaDe": { "@id": "roots:DERIVA_DE", "@type": "@id" },
+    "varianteRegional": { "@id": "roots:VARIANTE_REGIONAL", "@type": "@id" },
+    "similarA": { "@id": "roots:SIMILAR_A", "@type": "@id" },
+
+    "peso": "roots:peso",
+    "metodoCalculoPeso": "roots:metodoCalculoPeso"
+  }
+}
+```
