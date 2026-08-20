@@ -1,4 +1,3 @@
-```
 # Relatório — Ordem 1 (Implementação da Ontologia)
 Data: 2026-08-19
 
@@ -30,4 +29,3 @@ Data: 2026-08-19
 Sem acesso à rede/Java nesta sandbox, não foi possível rodar um reasoner OWL real (HermiT/Pellet) para confirmar ausência de inconsistências e classes insatisfazíveis — critério de aceite formal da Ordem 1. A ontologia foi construída com disciplina de rastreabilidade estrita à fonte, e passou por checagem sintática manual (balanceamento, JSON válido), mas **a validação lógica formal fica pendente de execução em ambiente com as ferramentas reais**.
 
 ## Status: Ordem 1 ESCRITA (TBox completo), PENDENTE DE VALIDAÇÃO POR REASONER REAL
-```

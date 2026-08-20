@@ -1,4 +1,3 @@
-```
 # Relatório — Ordem -1 (Governança do Repositório)
 Data: 2026-08-19
 
@@ -19,4 +18,3 @@ Nenhum código de domínio foi escrito nesta Ordem. `main` não recebeu nenhum c
 - [x] `CONTRIBUTING.md` documenta Git Flow, Conventional Commits e a distinção de versionamento.
 
 ## Status: Ordem -1 CONCLUÍDA (com limitação de infraestrutura declarada, não bloqueante para prosseguir)
-```

@@ -1,4 +1,3 @@
-```
 # Relatório — Ordem 0 (Setup, Stack e CI/CD)
 Data: 2026-08-19
 
@@ -28,4 +27,3 @@ Data: 2026-08-19
 | `.env.example` com todas as variáveis, sem valor real | ✅ Verificado |
 
 ## Status: Ordem 0 ESCRITA, PENDENTE DE VALIDAÇÃO POR EXECUÇÃO REAL
-```

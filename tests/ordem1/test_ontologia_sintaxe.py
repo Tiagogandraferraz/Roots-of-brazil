@@ -1,4 +1,3 @@
-```python
 """Teste mínimo de sintaxe da Ordem 1 — balanceamento estrutural, sem reasoner real (sem rede nesta sandbox)."""
 from pathlib import Path
 import json
@@ -36,4 +35,3 @@ def test_12_tipos_relacao_presentes():
              "LOCALIZADO_EM_BIOMA", "DERIVA_DE", "VARIANTE_REGIONAL", "SIMILAR_A"]
     for t in tipos:
         assert f"roots:{t} a owl:ObjectProperty" in s
-```
