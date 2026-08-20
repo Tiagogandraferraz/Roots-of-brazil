@@ -1,0 +1,191 @@
+```
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix roots: <https://rootsofbrazil.org/ontology#> .
+
+<https://rootsofbrazil.org/ontology> a owl:Ontology ;
+    rdfs:label "Ontologia Conceitual do Roots of Brazil" ;
+    rdfs:comment "Formaliza, em OWL/RDF, a semântica do Dicionário de Dados Oficial v1.2 do Roots of Brazil. Gerada na Ordem 1 do Manual de Sprint (Livro 2). Esquema (TBox) apenas — nenhuma instância (ABox) do Corpus é incluída aqui." ;
+    owl:versionInfo "1.0 — derivada do Dicionário de Dados Oficial v1.2" .
+
+# =============================================================
+# Superclasse comum — blocos transversais (Dicionário v1.2, Seções 2-9)
+# =============================================================
+
+roots:ObjetoRoots a owl:Class ;
+    rdfs:label "Objeto Roots"@pt ;
+    rdfs:comment "Superclasse abstrata de todas as 8 entidades do corpus. Carrega os blocos transversais definidos uma única vez no Dicionário v1.2 (Política de Identificadores, Metadados Universais, UUID, Slug, Internacionalização, Taxonomia) e herdados por todas as subclasses — Dicionário v1.2, Seções 2-9." .
+
+# --- Data properties transversais (aplicam-se a roots:ObjetoRoots) ---
+
+roots:id a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:label "ID legível" ;
+    rdfs:comment "Identificador legível por prefixo de entidade (ex.: ING-000001). Dicionário v1.2, Seção 3 (Política de Identificadores)." .
+
+roots:uuid a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:label "UUID v4" ;
+    rdfs:comment "Identificador universal imutável, UUID v4. Dicionário v1.2, Seção 5." .
+
+roots:slug a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:label "Slug" ;
+    rdfs:comment "Identificador amigável para URL, kebab-case. Dicionário v1.2, Seção 7." .
+
+roots:createdAt a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:dateTime ;
+    rdfs:comment "Timestamp de criação, imutável. Dicionário v1.2, Seção 4." .
+
+roots:updatedAt a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:dateTime ;
+    rdfs:comment "Timestamp da última alteração. Dicionário v1.2, Seção 4." .
+
+roots:version a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:integer ;
+    rdfs:comment "Contador de versão do objeto, inicia em 1. Dicionário v1.2, Seção 4 e Seção 6 (Política de Versionamento)." .
+
+roots:confiabilidade a owl:DatatypeProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:comment "Enum: 🟢 Confirmado em várias fontes | 🟡 Confirmado em uma única fonte | 🔵 Inferido | 🔴 Pendente de validação. Dicionário v1.2, Seção 11." .
+
+# Internacionalização (Seção 8) — nome em 8 idiomas, descrição em 3
+roots:nome_pt a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:comment "Obrigatório. Dicionário v1.2, Seção 8." .
+roots:nome_en a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:nome_es a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:nome_fr a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:nome_it a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:nome_de a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:nome_ja a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:nome_zh a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:descricao_pt a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:comment "Obrigatório apenas em catálogos com campo Descrição legado (Técnica, Patrimônio, Bioma); demais iniciam 'não informado'. Dicionário v1.2, Seção 8." .
+roots:descricao_en a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:descricao_es a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+
+# Taxonomia expandida (Seção 9) — 7 níveis, do mais geral ao mais específico
+roots:macrogrupo a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:comment "Nível mais amplo. Valor inicial 'não classificado'. Dicionário v1.2, Seção 9." .
+roots:grupo a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:ordemTaxonomica a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:comment "Nível 'Ordem' da taxonomia (renomeado ordemTaxonomica para não colidir com a Ordem de execução do Manual)." .
+roots:familia a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:classe a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string ;
+    rdfs:comment "Já existia na v1.1. Dicionário v1.2, Seção 9." .
+roots:categoria a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+roots:subcategoria a owl:DatatypeProperty ; rdfs:domain roots:ObjetoRoots ; rdfs:range xsd:string .
+
+# Geodados (Seção 10) — aplicável apenas a Território e Bioma (ver restrição SHACL, não OWL global)
+roots:latitude a owl:DatatypeProperty ; rdfs:range xsd:decimal ; rdfs:comment "WGS 84. Território e Bioma. Dicionário v1.2, Seção 10." .
+roots:longitude a owl:DatatypeProperty ; rdfs:range xsd:decimal .
+roots:boundingBox a owl:DatatypeProperty ; rdfs:comment "GeoJSON BBox [minLon,minLat,maxLon,maxLat]." .
+roots:geometry a owl:DatatypeProperty ; rdfs:comment "GeoJSON Polygon/MultiPolygon, RFC 7946." .
+
+# =============================================================
+# As 8 classes de entidade (Dicionário v1.2, Seções 12-19)
+# =============================================================
+
+roots:Ingrediente a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo ING-xxxxxx. 130 registros (v1.1, inalterado). Dicionário v1.2, Seção 12." .
+roots:Receita a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo REC-xxxxxx. 136 registros. Dicionário v1.2, Seção 14." .
+roots:Tecnica a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo TEC-xxxxxx. 38 registros. Dicionário v1.2, Seção 16." .
+roots:Povo a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo POV-xxxxxx. 17 registros. Dicionário v1.2, Seção 18." .
+roots:Territorio a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo TER-xxxxxx. 18 registros. Dicionário v1.2, Seção 20." .
+roots:Patrimonio a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo PAT-xxxxxx. 35 registros. Dicionário v1.2, Seção 22." .
+roots:Bioma a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo BIO-xxxxxx. 7 registros (6 IBGE + Zona Costeira extra-oficial). Dicionário v1.2, Seção 24." .
+roots:LivroFonte a owl:Class ; rdfs:subClassOf roots:ObjetoRoots ;
+    rdfs:comment "Prefixo LIV-xxxxxx. Entidade NOVA na v1.2, referência canônica de proveniência. 0 instâncias nesta versão (esquema definido, população pendente). Dicionário v1.2, Seção 19." .
+
+owl:AllDisjointClasses [ owl:members ( roots:Ingrediente roots:Receita roots:Tecnica roots:Povo
+    roots:Territorio roots:Patrimonio roots:Bioma roots:LivroFonte ) ] .
+
+# --- Propriedades específicas por catálogo (amostra dos campos distintivos, não-transversais) ---
+
+roots:nomesRegionais a owl:DatatypeProperty ; rdfs:domain roots:Ingrediente ; rdfs:range xsd:string ;
+    rdfs:comment "Lista separada por ';'. Dicionário v1.2, Seção 13." .
+roots:numeroVersoesCatalogadas a owl:DatatypeProperty ; rdfs:domain roots:Receita ; rdfs:range xsd:integer ;
+    rdfs:comment "Dicionário v1.2, Seção 15." .
+roots:origemCultural a owl:DatatypeProperty ; rdfs:domain roots:Tecnica ; rdfs:range xsd:string ;
+    rdfs:comment "Dicionário v1.2, Seção 17." .
+roots:regiao a owl:DatatypeProperty ; rdfs:domain roots:Povo ; rdfs:range xsd:string ;
+    rdfs:comment "Lista separada por ';'. Dicionário v1.2, Seção 19." .
+roots:tituloLivro a owl:DatatypeProperty ; rdfs:domain roots:LivroFonte ; rdfs:range xsd:string ;
+    rdfs:comment "Dicionário v1.2, Seção 19." .
+roots:autorLivro a owl:DatatypeProperty ; rdfs:domain roots:LivroFonte ; rdfs:range xsd:string .
+roots:tipoDocumentoLivro a owl:DatatypeProperty ; rdfs:domain roots:LivroFonte ; rdfs:range xsd:string ;
+    rdfs:comment "Enum: Livro | Apostila | Material de curso | Ficha técnica compilada | Outro." .
+
+# =============================================================
+# 12 tipos de relação (object properties) — Dicionário v1.2, Seção 21/29
+# 10 com instância + 2 reservados (VARIANTE_REGIONAL, SIMILAR_A)
+# =============================================================
+
+roots:USA_INGREDIENTE a owl:ObjectProperty ;
+    rdfs:domain roots:Receita ; rdfs:range roots:Ingrediente ;
+    rdfs:comment "895 instâncias na v1.1. Dicionário v1.2, Seção 21." .
+
+roots:ASSOCIADO_A_POVO a owl:ObjectProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( roots:Receita roots:Ingrediente ) ] ;
+    rdfs:range roots:Povo ;
+    rdfs:comment "205 instâncias (134 Receita→Povo + 71 Ingrediente→Povo). Domain é união de Receita e Ingrediente. Dicionário v1.2, Seção 21." .
+
+roots:CULTIVADO_EM a owl:ObjectProperty ;
+    rdfs:domain roots:Ingrediente ; rdfs:range roots:Territorio ;
+    rdfs:comment "106 instâncias. Dicionário v1.2, Seção 21." .
+
+roots:UTILIZA_TECNICA a owl:ObjectProperty ;
+    rdfs:domain roots:Receita ; rdfs:range roots:Tecnica ;
+    rdfs:comment "85 instâncias. Dicionário v1.2, Seção 21." .
+
+roots:PREPARADO_COM a owl:ObjectProperty ;
+    rdfs:domain roots:Tecnica ; rdfs:range roots:Ingrediente ;
+    rdfs:comment "81 instâncias. Dicionário v1.2, Seção 21." .
+
+roots:OCORRE_EM a owl:ObjectProperty ;
+    rdfs:domain roots:Receita ; rdfs:range roots:Territorio ;
+    rdfs:comment "77 instâncias. Dicionário v1.2, Seção 21." .
+
+roots:ORIGINARIO_DE a owl:ObjectProperty ;
+    rdfs:domain roots:Ingrediente ;
+    rdfs:range [ a owl:Class ; owl:unionOf ( roots:Povo roots:Bioma ) ] ;
+    rdfs:comment "67 instâncias (39 Ingrediente→Povo + 28 Ingrediente→Bioma). Range é união de Povo e Bioma. Dicionário v1.2, Seção 21." .
+
+roots:PATRIMONIO_DE a owl:ObjectProperty ;
+    rdfs:domain roots:Patrimonio ; rdfs:range roots:Povo ;
+    rdfs:comment "38 instâncias. Dicionário v1.2, Seção 21." .
+
+roots:LOCALIZADO_EM_BIOMA a owl:ObjectProperty ;
+    rdfs:domain roots:Territorio ; rdfs:range roots:Bioma ;
+    rdfs:comment "24 instâncias. Tipo de extensão criado no Sprint 2 para acomodar a nova entidade Bioma. Dicionário v1.2, Seção 21." .
+
+roots:DERIVA_DE a owl:ObjectProperty ;
+    rdfs:domain roots:Ingrediente ; rdfs:range roots:Ingrediente ;
+    rdfs:comment "7 instâncias. Dicionário v1.2, Seção 21." .
+
+roots:VARIANTE_REGIONAL a owl:ObjectProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range roots:ObjetoRoots ;
+    rdfs:comment "RESERVADO — 0 instâncias na v1.1. Domain/range não especificados com granularidade fina pelo Dicionário v1.2 (apenas listado como tipo válido no enum, Seção 21/29) — mantido em roots:ObjetoRoots/roots:ObjetoRoots por não haver base documental para restringir mais, evitando inventar semântica não fundamentada na fonte. Pendência de materialização registrada para v1.3." .
+
+roots:SIMILAR_A a owl:ObjectProperty ;
+    rdfs:domain roots:ObjetoRoots ; rdfs:range roots:ObjetoRoots ;
+    rdfs:comment "RESERVADO — 0 instâncias na v1.1. Mesma nota de VARIANTE_REGIONAL: domain/range não especificados pelo Dicionário v1.2 além do enum. Pendência de materialização registrada para v1.3." .
+
+# Propriedades da ARESTA (peso, confiabilidade, proveniência) — modeladas via reificação,
+# ver nota de modelagem no relatório técnico da Ordem 1 (RELACOES tem atributos próprios
+# que RDF/OWL simples não representa nativamente em uma tripla; SHACL Shape trata a
+# validação, e a Ordem 3 (Neo4j) modela isso nativamente como propriedades de aresta).
+roots:peso a owl:DatatypeProperty ; rdfs:range xsd:decimal ;
+    rdfs:comment "0.0 a 1.0. Propriedade da relação (aresta), não de uma classe de entidade. Dicionário v1.2, Seção 20." .
+roots:metodoCalculoPeso a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:comment "Documenta como o peso foi obtido. Dicionário v1.2, Seção 20." .
+```
