@@ -1,0 +1,90 @@
+```
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix roots: <https://rootsofbrazil.org/ontology#> .
+
+# Shapes derivadas do Dicionário de Dados Oficial v1.2, Seção 23 (Integridade Referencial)
+# e Seções 3/5/7/11 (Política de Identificadores, UUID, Slug, Confiabilidade).
+
+roots:ObjetoRootsShape a sh:NodeShape ;
+    sh:targetClass roots:ObjetoRoots ;
+    sh:property [
+        sh:path roots:id ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "id é obrigatório e único — CHECK/UNIQUE(id). Dicionário v1.2, Seção 3." ;
+    ] ;
+    sh:property [
+        sh:path roots:uuid ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:pattern "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" ;
+        sh:message "uuid deve ser UUID v4 válido e único — UNIQUE(uuid). Dicionário v1.2, Seção 5." ;
+    ] ;
+    sh:property [
+        sh:path roots:slug ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:pattern "^[a-z0-9]+(-[a-z0-9]+)*$" ;
+        sh:message "slug deve ser kebab-case; único DENTRO DO MESMO CATÁLOGO (não global) — UNIQUE(slug) por tabela. Dicionário v1.2, Seção 7." ;
+    ] ;
+    sh:property [
+        sh:path roots:createdAt ; sh:datatype xsd:dateTime ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "created_at obrigatório, imutável após criação. Dicionário v1.2, Seção 4." ;
+    ] ;
+    sh:property [
+        sh:path roots:updatedAt ; sh:datatype xsd:dateTime ; sh:minCount 1 ; sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path roots:version ; sh:datatype xsd:integer ; sh:minInclusive 1 ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "version é inteiro >= 1. Dicionário v1.2, Seção 4." ;
+    ] ;
+    sh:property [
+        sh:path roots:confiabilidade ;
+        sh:pattern "^(🟢|🟡|🔵|🔴)" ;
+        sh:message "confiabilidade deve iniciar por um dos 4 emojis de categoria (Seção 11); a categoria 🔵 Inferido é documentada como 'Enum + nota', podendo carregar texto livre após o emoji — dado real do Corpus v1.1 confirma essa variação (ex.: '🔵 Inferido com cautela')." ;
+    ] ;
+    sh:property [
+        sh:path roots:nome_pt ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "nome_pt é obrigatório em todas as entidades. Dicionário v1.2, Seção 8." ;
+    ] ;
+    sh:property [
+        sh:path roots:macrogrupo ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "macrogrupo obrigatório, valor inicial 'não classificado' se não curado. Dicionário v1.2, Seção 9." ;
+    ] .
+
+# Padrão de prefixo de ID por classe (Dicionário v1.2, Seção 3, Tabela de prefixos)
+roots:IngredienteIdShape a sh:NodeShape ; sh:targetClass roots:Ingrediente ;
+    sh:property [ sh:path roots:id ; sh:pattern "^ING-[0-9]{6}$" ] .
+roots:ReceitaIdShape a sh:NodeShape ; sh:targetClass roots:Receita ;
+    sh:property [ sh:path roots:id ; sh:pattern "^REC-[0-9]{6}$" ] .
+roots:TecnicaIdShape a sh:NodeShape ; sh:targetClass roots:Tecnica ;
+    sh:property [ sh:path roots:id ; sh:pattern "^TEC-[0-9]{6}$" ] .
+roots:PovoIdShape a sh:NodeShape ; sh:targetClass roots:Povo ;
+    sh:property [ sh:path roots:id ; sh:pattern "^POV-[0-9]{6}$" ] .
+roots:TerritorioIdShape a sh:NodeShape ; sh:targetClass roots:Territorio ;
+    sh:property [ sh:path roots:id ; sh:pattern "^TER-[0-9]{6}$" ] .
+roots:PatrimonioIdShape a sh:NodeShape ; sh:targetClass roots:Patrimonio ;
+    sh:property [ sh:path roots:id ; sh:pattern "^PAT-[0-9]{6}$" ] .
+roots:BiomaIdShape a sh:NodeShape ; sh:targetClass roots:Bioma ;
+    sh:property [ sh:path roots:id ; sh:pattern "^BIO-[0-9]{6}$" ] .
+roots:LivroFonteIdShape a sh:NodeShape ; sh:targetClass roots:LivroFonte ;
+    sh:property [ sh:path roots:id ; sh:pattern "^LIV-[0-9]{6}$" ] .
+
+# Shape da relação (aresta RELACOES) — Dicionário v1.2, Seção 29
+roots:RelacaoShape a sh:NodeShape ;
+    sh:targetObjectsOf roots:USA_INGREDIENTE, roots:ASSOCIADO_A_POVO, roots:CULTIVADO_EM,
+        roots:UTILIZA_TECNICA, roots:PREPARADO_COM, roots:OCORRE_EM, roots:ORIGINARIO_DE,
+        roots:PATRIMONIO_DE, roots:LOCALIZADO_EM_BIOMA, roots:DERIVA_DE ;
+    sh:property [
+        sh:path roots:peso ; sh:datatype xsd:decimal ;
+        sh:minInclusive 0.0 ; sh:maxInclusive 1.0 ;
+        sh:message "peso deve estar entre 0.0 e 1.0. Dicionário v1.2, Seção 20.1." ;
+    ] ;
+    sh:property [
+        sh:path roots:metodoCalculoPeso ; sh:datatype xsd:string ; sh:minCount 1 ;
+        sh:message "metodo_calculo_peso é obrigatório (documenta a origem do peso). Dicionário v1.2, Seção 20.2." ;
+    ] .
+
+# tipo_relacao — enum fechado de 12 valores (Dicionário v1.2, Seção 21/29)
+roots:TipoRelacaoShape a sh:PropertyShape ;
+    sh:path roots:tipoRelacao ;
+    sh:in ( "USA_INGREDIENTE" "ASSOCIADO_A_POVO" "CULTIVADO_EM" "UTILIZA_TECNICA"
+            "PREPARADO_COM" "OCORRE_EM" "ORIGINARIO_DE" "PATRIMONIO_DE"
+            "LOCALIZADO_EM_BIOMA" "DERIVA_DE" "VARIANTE_REGIONAL" "SIMILAR_A" ) ;
+    sh:message "tipo_relacao deve ser um dos 12 valores do domínio. Dicionário v1.2, Seção 21." .
+```
