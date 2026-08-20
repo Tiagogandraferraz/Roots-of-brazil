@@ -1,0 +1,136 @@
+name: Carga Neo4j — Ordem 3 (DRY-RUN)
+
+# Disparo MANUAL apenas. Este workflow NÃO escreve no Neo4j em nenhuma
+# circunstância: ele para no dry-run, por decisão explícita. A carga real
+# (--execute) fica em um segundo workflow, ainda não criado, que só existirá
+# mediante autorização.
+on:
+  workflow_dispatch:
+
+# Só leitura do próprio repositório. O workflow não commita, não abre PR e não
+# publica nada — não há motivo para conceder escrita.
+permissions:
+  contents: read
+
+# Duas execuções simultâneas apontariam para a mesma instância de destino.
+# Mesmo sendo só leitura, serializar evita relatórios confusos.
+concurrency:
+  group: carga-neo4j-ordem3
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    name: Validar fonte e destino (sem escrever)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        # Obrigatório por causa dos `| tee`: o shell padrão do Actions é
+        # `bash -e` SEM pipefail, então o código de saída de um pipeline seria o
+        # do `tee` (sempre 0) e uma divergência no dry-run passaria como
+        # sucesso. Declarar `shell: bash` ativa `-eo pipefail`, fazendo a falha
+        # do Python reprovar o job, que é o ponto de existir uma validação.
+        shell: bash
+
+    env:
+      # Os três vêm de Settings > Secrets and variables > Actions > Secrets.
+      # NEO4J_USERNAME é a convenção do arquivo de credenciais do AuraDB;
+      # app/database/neo4j.py aceita tanto essa quanto NEO4J_USER.
+      NEO4J_URI: ${{ secrets.NEO4J_URI }}
+      NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+      NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+      NEO4J_DATABASE: neo4j
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Conferir que os secrets estão cadastrados
+        # Falha aqui, com nome claro, em vez de deixar o driver quebrar mais
+        # adiante com "variável ausente". Testa se está vazio sem imprimir valor.
+        run: |
+          faltando=""
+          [ -n "$NEO4J_URI" ]      || faltando="$faltando NEO4J_URI"
+          [ -n "$NEO4J_USERNAME" ] || faltando="$faltando NEO4J_USERNAME"
+          [ -n "$NEO4J_PASSWORD" ] || faltando="$faltando NEO4J_PASSWORD"
+          if [ -n "$faltando" ]; then
+            echo "::error::Secrets ausentes:$faltando — cadastrar em Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          echo "Os três secrets estão presentes."
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependências
+        # Só o que os dois scripts usam de fato: openpyxl para ler o corpus na
+        # Ordem 2 e o driver neo4j na Ordem 3. Instalar o projeto inteiro
+        # (fastapi, torch via sentence-transformers) levaria minutos sem
+        # nenhum ganho aqui. A faixa do neo4j é a mesma do pyproject.
+        run: pip install --quiet "neo4j>=5.24,<6" openpyxl
+
+      - name: Conferir que o corpus está no repositório
+        run: |
+          if [ ! -f Corpus_Fundador_v1.1.xlsx ]; then
+            echo "::error::Corpus_Fundador_v1.1.xlsx não encontrado no checkout."
+            exit 1
+          fi
+          echo "Corpus encontrado: $(du -h Corpus_Fundador_v1.1.xlsx | cut -f1)"
+
+      - name: Ordem 2 — gerar o SQLite a partir do corpus
+        # Fonte canônica da carga. O script já para sozinho se as contagens
+        # divergirem do baseline da Auditoria Sprint 2.
+        run: |
+          python scripts/ordem2/etl.py Corpus_Fundador_v1.1.xlsx | tee ordem2.log
+
+      - name: Ordem 3 — verificar o DESTINO (somente leitura)
+        # Conecta no Neo4j e inspeciona: versão, edição, estado atual do grafo,
+        # constraints/índices já presentes. Não escreve. Se falhar, o job para
+        # aqui e o dry-run nem chega a rodar.
+        run: |
+          python scripts/ordem3/etl_neo4j.py --verificar-destino | tee destino.log
+
+      - name: Ordem 3 — DRY-RUN (valida a FONTE, não conecta)
+        # Valida o SQLite contra a ontologia e o baseline. Sai com código != 0
+        # se houver qualquer divergência, reprovando o job.
+        run: |
+          python scripts/ordem3/etl_neo4j.py | tee dry-run.log
+
+      - name: Publicar resumo na aba Summary
+        # Deixa o resultado legível direto na interface do GitHub, sem precisar
+        # abrir os logs do job — útil para revisar pelo celular.
+        if: always()
+        run: |
+          {
+            echo "## Ordem 3 — dry-run (nada foi escrito no Neo4j)"
+            echo
+            echo "### Destino"
+            echo '```'
+            cat destino.log 2>/dev/null || echo "(não executado)"
+            echo '```'
+            echo "### Plano de carga"
+            echo '```'
+            cat dry-run.log 2>/dev/null || echo "(não executado)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar SQLite e logs como artefato
+        # O .db permite conferir a fonte gerada; os logs ficam disponíveis para
+        # download depois que o runner é destruído.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordem3-dry-run
+          path: |
+            roots_of_brazil_dev.db
+            *.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Lembrete — a carga real não roda aqui
+        if: success()
+        run: |
+          echo "::notice::Dry-run aprovado. A carga real (--execute) NÃO faz parte deste workflow e exige autorização explícita."
