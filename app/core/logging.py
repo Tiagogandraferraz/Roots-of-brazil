@@ -14,6 +14,7 @@ import json
 import logging
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 AUDIT_LEVEL_NUM = 25
@@ -50,6 +51,9 @@ def configure_logging(level: str = "INFO") -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JsonFormatter())
 
+    # logs/ é ignorado pelo git (.gitignore), então não existe em um clone limpo —
+    # sem isto, `import app.main` quebra com FileNotFoundError no CI.
+    Path("logs").mkdir(exist_ok=True)
     audit_handler = logging.FileHandler("logs/audit.log", encoding="utf-8")
     audit_handler.setFormatter(JsonFormatter())
     audit_handler.setLevel(AUDIT_LEVEL_NUM)
