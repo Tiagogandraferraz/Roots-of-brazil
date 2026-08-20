@@ -63,7 +63,9 @@ Divergindo qualquer uma, o script **para e reporta** — não ajusta dado para b
 | Cobertura `app/models/grafo.py` | ✅ 100% |
 | Cobertura `app/database/neo4j.py` | 70% — as linhas restantes são exatamente as que exigem servidor |
 | `docker compose config` | ✅ YAML válido, variáveis resolvem |
-| Dry-run do ETL ponta a ponta | ✅ executado contra SQLite sintético: leu, validou, imprimiu o plano, **bloqueou a carga** por divergência de baseline e saiu com código 1 |
+| Dry-run do ETL contra fonte incorreta | ✅ leu, validou e **bloqueou a carga** por divergência de baseline, saindo com código 1 |
+| **Dry-run do ETL contra o CORPUS REAL** | ✅ **381 nós e 1.585 arestas, todos os 20 contadores batendo com o baseline. "Nenhuma divergência. Pronto para `--execute`." Código 0** |
+| `pytest tests/ordem2` com o banco real | ✅ 7 passaram (antes puladas por falta do `.db`) |
 
 Os testes offline não são de fachada: eles **releem `schemas/ontologia.ttl`** e comparam com `app/models/grafo.py`. Se alguém acrescentar uma `owl:Class` ou um `owl:ObjectProperty` na ontologia sem refletir no modelo do grafo, `test_todo_owl_class_do_corpus_virou_label` e `test_todo_object_property_virou_tipo_de_relacao` quebram. Uma tradução que sai de sincronia em silêncio é pior do que não ter tradução.
 
@@ -103,8 +105,22 @@ A Ordem foi pedida citando "as 914+ relações ontológicas". Nenhum artefato do
 ## Limitações declaradas
 - **A carga real não foi executada** — é a restrição da Ordem, e ela foi respeitada. O plano está pronto e é reproduzível (comandos abaixo).
 - **Os 12 testes de integração foram PULADOS, não executados.** Não há daemon Docker nesta sandbox, logo não há Neo4j alcançável. Eles se pulam sozinhos com a razão impressa (`pytest -rs`), em vez de falhar ou de fingir sucesso. Tudo que depende do servidor — sintaxe do Cypher aceita pelo motor, disponibilidade das constraints na Community, carga, travessia multi-hop, full-text — está **coberto por teste escrito mas ainda não verificado em execução.**
-- **`Corpus_Fundador_v1.1.xlsx` e `roots_of_brazil_dev.db` não estão no repositório** (o `.gitignore` exclui `*.db`). Sem nenhum dos dois, o dry-run não tem o que ler e sai com código 2 (`Banco não encontrado. Rode scripts/ordem2/etl.py primeiro.`) — a carga real depende de um dos dois estar presente no ambiente onde ela for executada. Os testes offline usam uma fixture sintética montada com o DDL real da Ordem 2.
-- **Tentativa de alcançar um AuraDB em nuvem falhou por política de rede, não por defeito de código.** O `--verificar-destino` executou, montou a configuração corretamente e chegou a abrir o driver; o egresso é que barrou. Diagnóstico registrado: DNS resolve (`34.148.173.76`), TCP na 7687 dá timeout (não há egresso TCP bruto), e o proxy HTTPS do ambiente responde **403 CONNECT** para o host — ou seja, ele não está na política de egresso desta sessão. Nenhum dos dois caminhos é contornável de dentro do ambiente.
+- **`Corpus_Fundador_v1.1.xlsx` e `roots_of_brazil_dev.db` não são versionados** (o `.gitignore` exclui ambos — dado de origem não entra no repositório). O corpus foi disponibilizado no ambiente e a fonte foi regenerada com `scripts/ordem2/etl.py`, o que permitiu validar o dry-run contra dado real. Quem for executar a carga precisa ter um dos dois presente. Os testes offline seguem usando fixtures sintéticas, para não depender do corpus.
+
+## BLOQUEADOR EXTERNO — carga real no Neo4j
+A execução de `--execute` contra uma instância real **não foi realizada** e está formalmente registrada como bloqueada por causa externa ao projeto:
+
+| | |
+|---|---|
+| **Natureza** | Infraestrutura do ambiente de execução — não é defeito de código, de schema ou de dado |
+| **Causa** | Sem daemon Docker na sandbox (destino local inviável) **e** host do Neo4j AuraDB fora da política de egresso (destino em nuvem inviável) |
+| **Evidência** | DNS resolve (`34.148.173.76`); TCP 7687 dá timeout — não há egresso TCP bruto; proxy HTTPS responde **403 CONNECT** para `f7c0c213.databases.neo4j.io:443`, registrado no log do proxy como `connect_rejected — policy denial` |
+| **Contornável de dentro?** | Não. A política é aplicada por proxy upstream, fora do container; os endpoints de controle retornam 405. A documentação do ambiente instrui explicitamente a reportar, não contornar (`raw-TCP databases — report, do not work around`) |
+| **Quem resolve** | Dono do ambiente (liberar o host na política de egresso) ou execução em máquina com Docker/rede aberta |
+| **Impacto** | Atinge apenas `--execute` e `--verificar-destino`. **Não** atinge o dry-run, que valida a fonte sem conectar e já rodou com sucesso contra o corpus real |
+| **O que fica pendente** | Os 12 testes de integração (escritos, hoje pulados) e a recontagem pós-carga dentro do Neo4j |
+
+Tudo que depende do grafo está escrito e revisado; falta a execução. Nenhuma decisão de modelagem depende do desbloqueio.
 - **Python 3.11 nesta sandbox**, contra `^3.13` no `pyproject.toml`. `mypy --strict` foi rodado com `--python-version 3.11`; nada no código novo usa sintaxe posterior a 3.10.
 
 ## Duas validações independentes, não uma
@@ -174,4 +190,11 @@ Nenhum conteúdo foi alterado além da remoção das duas linhas de cerca por ar
 ## Pendência que permanece aberta
 O `nav` do `mkdocs.yml` está defasado desde a Ordem 1: lista até a Ordem 0, não inclui os relatórios das Ordens 1, 2 e 3, e aponta para `relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md`, que não existe no repositório. O arquivo agora é YAML válido, mas a navegação continua quebrada. Não foi corrigido aqui porque resolver a entrada órfã exige decidir entre criar o relatório da Ordem -2 ou remover a linha — decisão de conteúdo, não de sintaxe.
 
-## Status: Ordem 3 IMPLEMENTADA E VALIDADA OFFLINE — carga real e testes de integração aguardando confirmação e um Neo4j no ar
+## Status
+| Frente | Estado |
+|---|---|
+| Código, testes e documentação | **CONCLUÍDA** — modelo de grafo, ETL, DDL, camada de conexão, 64 testes, compose e relatório entregues e validados |
+| Validação da fonte (dry-run contra o corpus real) | **CONCLUÍDA** — 381 nós / 1.585 arestas, 20 de 20 contadores no baseline, código 0 |
+| Carga real no Neo4j (`--execute`) e testes de integração | **BLOQUEADA** — bloqueador externo de infraestrutura, ver seção acima |
+
+**Ordem 3 CONCLUÍDA quanto a código, testes e documentação. A execução real da carga fica BLOQUEADA por causa externa, a ser retomada em ambiente com Docker ou com o host liberado na política de egresso.**

@@ -22,3 +22,6 @@ logs/*.log
 .DS_Store
 *.log
 site/
+
+# Dado de origem do corpus — não versionado (mesma política de *.db).
+Corpus_Fundador_v1.1.xlsx
