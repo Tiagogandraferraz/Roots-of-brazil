@@ -16,3 +16,6 @@ logs/*.log
 .DS_Store
 *.log
 site/
+.coverage
+coverage.xml
+htmlcov/

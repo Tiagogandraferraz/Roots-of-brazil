@@ -11,3 +11,6 @@ nav:
       - Ordem -2 (Consistência): relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md
       - Ordem -1 (Governança): relatorio_ordem-1.md
       - Ordem 0 (Setup/CI): relatorio_ordem0.md
+      - Ordem 1 (Ontologia): relatorio_ordem1.md
+      - Ordem 2 (Banco relacional): relatorio_ordem2.md
+      - Ordem 3 (Neo4j): relatorio_ordem3.md
