@@ -103,16 +103,35 @@ A Ordem foi pedida citando "as 914+ relações ontológicas". Nenhum artefato do
 ## Limitações declaradas
 - **A carga real não foi executada** — é a restrição da Ordem, e ela foi respeitada. O plano está pronto e é reproduzível (comandos abaixo).
 - **Os 12 testes de integração foram PULADOS, não executados.** Não há daemon Docker nesta sandbox, logo não há Neo4j alcançável. Eles se pulam sozinhos com a razão impressa (`pytest -rs`), em vez de falhar ou de fingir sucesso. Tudo que depende do servidor — sintaxe do Cypher aceita pelo motor, disponibilidade das constraints na Community, carga, travessia multi-hop, full-text — está **coberto por teste escrito mas ainda não verificado em execução.**
-- **`Corpus_Fundador_v1.1.xlsx` e `roots_of_brazil_dev.db` não estão no repositório** (o `.gitignore` exclui `*.db`). Os testes offline usam uma fixture sintética montada com o DDL real da Ordem 2.
+- **`Corpus_Fundador_v1.1.xlsx` e `roots_of_brazil_dev.db` não estão no repositório** (o `.gitignore` exclui `*.db`). Sem nenhum dos dois, o dry-run não tem o que ler e sai com código 2 (`Banco não encontrado. Rode scripts/ordem2/etl.py primeiro.`) — a carga real depende de um dos dois estar presente no ambiente onde ela for executada. Os testes offline usam uma fixture sintética montada com o DDL real da Ordem 2.
+- **Tentativa de alcançar um AuraDB em nuvem falhou por política de rede, não por defeito de código.** O `--verificar-destino` executou, montou a configuração corretamente e chegou a abrir o driver; o egresso é que barrou. Diagnóstico registrado: DNS resolve (`34.148.173.76`), TCP na 7687 dá timeout (não há egresso TCP bruto), e o proxy HTTPS do ambiente responde **403 CONNECT** para o host — ou seja, ele não está na política de egresso desta sessão. Nenhum dos dois caminhos é contornável de dentro do ambiente.
 - **Python 3.11 nesta sandbox**, contra `^3.13` no `pyproject.toml`. `mypy --strict` foi rodado com `--python-version 3.11`; nada no código novo usa sintaxe posterior a 3.10.
+
+## Duas validações independentes, não uma
+O dry-run e a verificação de destino cobrem lados opostos do pipeline, e **nenhum dos dois escreve**:
+
+| Comando | O que valida | Conecta no Neo4j? | Precisa da fonte? |
+|---|---|---|---|
+| `etl_neo4j.py` (padrão) | a **fonte** — SQLite vs. ontologia e baseline | **não** | sim |
+| `etl_neo4j.py --verificar-destino` | o **destino** — versão, edição, estado do grafo, DDL já presente | sim (leitura) | não |
+| `etl_neo4j.py --execute` | valida a fonte, escreve, e reconta no grafo | sim (escrita) | sim |
+
+Rodar os dois primeiros antes de autorizar o terceiro é o procedimento. O dry-run não conectar é decisão de projeto, coberta por teste (`test_cli_sem_execute_nao_conecta_no_neo4j`): sem `--execute`, nem o driver é importado.
+
+## Configuração de credenciais
+`ConfiguracaoNeo4j.do_ambiente()` aceita o usuário em `NEO4J_USER` **ou** em `NEO4J_USERNAME`. O `docker-compose.yml` deste projeto usa a primeira; o arquivo de credenciais que o **Neo4j AuraDB** entrega no provisionamento usa a segunda. Aceitar as duas evita que colar as credenciais da nuvem direto no `.env` falhe como "variável ausente" com o valor bem ali no arquivo. Com ambas definidas, `NEO4J_USER` tem precedência.
+
+O `.env` é ignorado pelo Git (`.gitignore`, linha 5) e nunca é versionado. Nenhuma mensagem de erro do código imprime a senha — nem o seu comprimento.
 
 ## Como executar a carga real (aguardando confirmação)
 ```bash
-# 1. Subir o Neo4j e conferir que ele aceita Cypher, não só HTTP
+# 1a. Destino local via Docker...
 docker compose up -d neo4j
 docker compose ps neo4j          # deve chegar a (healthy)
-
-export NEO4J_URI=bolt://localhost:7687 NEO4J_USER=neo4j NEO4J_PASSWORD=<senha>
+# 1b. ...ou destino em nuvem (AuraDB): preencher o .env e conferir o alcance.
+#     Bolt é TCP na 7687 — não passa por proxy HTTP; o host precisa estar
+#     liberado na política de egresso do ambiente.
+python scripts/ordem3/etl_neo4j.py --verificar-destino
 
 # 2. Regenerar o SQLite da Ordem 2 (fonte da carga)
 python scripts/ordem2/etl.py Corpus_Fundador_v1.1.xlsx

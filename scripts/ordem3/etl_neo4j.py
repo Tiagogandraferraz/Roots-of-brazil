@@ -39,6 +39,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from neo4j import Session
 
+    from app.database.neo4j import ConfiguracaoNeo4j
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from app.models.grafo import (  # noqa: E402
@@ -308,6 +310,113 @@ def imprime_plano(plano: PlanoCarga, db: Path) -> None:
 # =============================================================
 
 
+def verifica_destino() -> int:
+    """Inspeciona o Neo4j de destino SEM escrever nada. Devolve o código de saída.
+
+    Complementa o dry-run: o dry-run valida a FONTE (o SQLite), esta função
+    valida o DESTINO (a instância de grafo). Junto, cobrem o que dá para saber
+    antes de autorizar `--execute`.
+
+    Todas as consultas são de leitura. Um grafo de destino já populado NÃO é
+    erro — a carga é idempotente por MERGE — mas é avisado, porque significa
+    que a carga vai atualizar nós existentes em vez de partir do zero.
+    """
+    from neo4j.exceptions import AuthError, ServiceUnavailable
+
+    from app.database.neo4j import ConfiguracaoNeo4j
+
+    config = ConfiguracaoNeo4j.do_ambiente()
+    print("=" * 72)
+    print("VERIFICAÇÃO DO DESTINO — ORDEM 3   [somente leitura: nada foi escrito]")
+    print("=" * 72)
+    print(f"URI:   {config.uri}")
+    print(f"Banco: {config.banco}   Usuário: {config.usuario}")
+    print()
+
+    try:
+        return _inspeciona(config)
+    except AuthError:
+        # Nunca ecoar a senha, nem o tamanho dela, na saída de erro.
+        print("FALHA DE AUTENTICAÇÃO: o servidor recusou usuário/senha.", file=sys.stderr)
+        print("Conferir NEO4J_USER (ou NEO4J_USERNAME) e NEO4J_PASSWORD no .env.", file=sys.stderr)
+        return 1
+    except ServiceUnavailable as erro:
+        print(f"SERVIDOR INALCANÇÁVEL em {config.uri}", file=sys.stderr)
+        print(f"  {erro}", file=sys.stderr)
+        print(
+            "\nCausas prováveis, nesta ordem:\n"
+            "  1. Egress de rede bloqueado. Bolt usa TCP na porta 7687, que não passa por\n"
+            "     proxy HTTP. Em ambiente com proxy (CI, sandbox), a porta precisa estar\n"
+            "     liberada — e o host, na política de egresso.\n"
+            "  2. Instância pausada. AuraDB Free suspende após inatividade; retomar pelo\n"
+            "     console antes de tentar de novo.\n"
+            "  3. URI errada. AuraDB usa o esquema neo4j+s:// (TLS + roteamento).",
+            file=sys.stderr,
+        )
+        return 1
+
+
+def _inspeciona(config: ConfiguracaoNeo4j) -> int:
+    """Corpo da verificação de destino, já com a conexão estabelecida."""
+    from app.database.neo4j import sessao
+
+    with sessao(config) as s:
+        componentes = s.run(
+            "CALL dbms.components() YIELD name, versions, edition "
+            "RETURN name, versions[0] AS versao, edition"
+        ).single()
+        edicao = componentes["edition"]
+        print(f"Servidor: {componentes['name']} {componentes['versao']} ({edicao})")
+        if edicao.lower() != "enterprise":
+            print(
+                "  Edição sem constraints de existência/node key/relação — a garantia de\n"
+                "  rel_id único, faixa de peso e nome_pt obrigatório fica com o ETL.\n"
+                "  Ver CONSTRAINTS_ENTERPRISE em app/models/grafo.py."
+            )
+        print()
+
+        total_nos = s.run("MATCH (n) RETURN count(n) AS n").single()["n"]
+        total_arestas = s.run("MATCH ()-[r]->() RETURN count(r) AS n").single()["n"]
+        do_corpus = s.run(
+            f"MATCH (n:{LABEL_SUPERCLASSE}) RETURN count(n) AS n"
+        ).single()["n"]
+        print(f"Estado atual do grafo: {total_nos} nós, {total_arestas} arestas")
+        print(f"  dos quais :{LABEL_SUPERCLASSE} (corpus Roots): {do_corpus}")
+        if total_nos == 0:
+            print("  Grafo vazio — a carga partirá do zero.")
+        elif do_corpus:
+            print(
+                "  AVISO: já há nós do corpus. A carga é idempotente (MERGE), então vai\n"
+                "  ATUALIZAR os existentes, não duplicar. Use --limpar para partir do zero."
+            )
+        else:
+            print(
+                "  AVISO: o banco tem dados que NÃO são do corpus Roots. A carga não os\n"
+                "  toca, e --limpar remove apenas :ObjetoRoots — mas confirme que é o\n"
+                "  banco certo antes de escrever."
+            )
+        print()
+
+        existentes = {r["name"] for r in s.run("SHOW CONSTRAINTS YIELD name")}
+        indices_existentes = {r["name"] for r in s.run("SHOW INDEXES YIELD name")}
+        print(f"Constraints a aplicar: {len(CONSTRAINTS)} "
+              f"({len([c for c in CONSTRAINTS if _nome_ddl(c) in existentes])} já existem)")
+        print(f"Índices a aplicar:     {len(INDICES)} "
+              f"({len([i for i in INDICES if _nome_ddl(i) in indices_existentes])} já existem)")
+
+    print("=" * 72)
+    return 0
+
+
+def _nome_ddl(comando: str) -> str:
+    """Extrai o nome de um CREATE CONSTRAINT/INDEX para comparar com SHOW."""
+    partes = comando.split()
+    for i, palavra in enumerate(partes):
+        if palavra.upper() in {"CONSTRAINT", "INDEX"} and i + 1 < len(partes):
+            return partes[i + 1]
+    return ""
+
+
 def _gravador(consulta: str, lote: list[dict[str, Any]]) -> Any:
     """Fecha consulta e lote numa função de transação para `Session.execute_write`.
 
@@ -437,10 +546,21 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Apaga o grafo antes de carregar. Exige --execute.",
     )
+    parser.add_argument(
+        "--verificar-destino",
+        action="store_true",
+        help="Conecta no Neo4j e inspeciona o destino (somente leitura). "
+             "Não lê a fonte nem escreve nada.",
+    )
     args = parser.parse_args(argv)
 
     if args.limpar and not args.execute:
         parser.error("--limpar só faz sentido junto com --execute.")
+
+    if args.verificar_destino:
+        if args.execute:
+            parser.error("--verificar-destino é uma checagem isolada; não combine com --execute.")
+        return verifica_destino()
 
     if not args.db.exists():
         print(f"Banco {args.db} não encontrado. Rode scripts/ordem2/etl.py primeiro.", file=sys.stderr)

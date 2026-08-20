@@ -37,11 +37,20 @@ class ConfiguracaoNeo4j:
     def do_ambiente(cls) -> ConfiguracaoNeo4j:
         """Monta a configuração a partir das variáveis de ambiente.
 
+        O usuário é lido de `NEO4J_USER` ou de `NEO4J_USERNAME`: o
+        docker-compose deste projeto usa a primeira, mas o arquivo de
+        credenciais que o Neo4j AuraDB entrega no provisionamento usa a
+        segunda. Aceitar as duas evita um erro de configuração silencioso ao
+        colar as credenciais da nuvem direto no `.env`.
+
         Levanta RuntimeError com mensagem explícita se faltar alguma — falha na
         largada é melhor do que um driver que só quebra na primeira query.
         A senha nunca é impressa nem incluída em mensagens de erro.
         """
-        faltando = [v for v in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD") if not os.getenv(v)]
+        usuario = os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or ""
+        faltando = [v for v in ("NEO4J_URI", "NEO4J_PASSWORD") if not os.getenv(v)]
+        if not usuario:
+            faltando.insert(1, "NEO4J_USER (ou NEO4J_USERNAME)")
         if faltando:
             raise RuntimeError(
                 f"Variáveis de ambiente do Neo4j ausentes: {', '.join(faltando)}. "
@@ -49,7 +58,7 @@ class ConfiguracaoNeo4j:
             )
         return cls(
             uri=os.environ["NEO4J_URI"],
-            usuario=os.environ["NEO4J_USER"],
+            usuario=usuario,
             senha=os.environ["NEO4J_PASSWORD"],
             banco=os.getenv("NEO4J_DATABASE", BANCO_PADRAO),
         )

@@ -24,7 +24,7 @@ from app.database.neo4j import (  # noqa: E402
     verifica_conectividade,
 )
 
-VARIAVEIS = ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD", "NEO4J_DATABASE")
+VARIAVEIS = ("NEO4J_URI", "NEO4J_USER", "NEO4J_USERNAME", "NEO4J_PASSWORD", "NEO4J_DATABASE")
 
 
 @pytest.fixture
@@ -53,6 +53,29 @@ def test_banco_configuravel(ambiente_limpo: pytest.MonkeyPatch) -> None:
         ambiente_limpo.setenv(var, valor)
     ambiente_limpo.setenv("NEO4J_DATABASE", "corpus")
     assert ConfiguracaoNeo4j.do_ambiente().banco == "corpus"
+
+
+def test_aceita_neo4j_username_do_auradb(ambiente_limpo: pytest.MonkeyPatch) -> None:
+    """O arquivo de credenciais do AuraDB usa NEO4J_USERNAME, não NEO4J_USER.
+
+    Colar as credenciais da nuvem direto no .env tem que funcionar, em vez de
+    falhar como "variável ausente" com o valor bem ali no arquivo.
+    """
+    ambiente_limpo.setenv("NEO4J_URI", "neo4j+s://exemplo.databases.neo4j.io")
+    ambiente_limpo.setenv("NEO4J_USERNAME", "neo4j")
+    ambiente_limpo.setenv("NEO4J_PASSWORD", "segredo")
+    assert ConfiguracaoNeo4j.do_ambiente().usuario == "neo4j"
+
+
+def test_neo4j_user_tem_precedencia_sobre_username(
+    ambiente_limpo: pytest.MonkeyPatch,
+) -> None:
+    """Com as duas definidas, vale NEO4J_USER — a convenção do docker-compose."""
+    ambiente_limpo.setenv("NEO4J_URI", "bolt://x")
+    ambiente_limpo.setenv("NEO4J_USER", "do-compose")
+    ambiente_limpo.setenv("NEO4J_USERNAME", "do-aura")
+    ambiente_limpo.setenv("NEO4J_PASSWORD", "p")
+    assert ConfiguracaoNeo4j.do_ambiente().usuario == "do-compose"
 
 
 def test_variavel_ausente_falha_na_largada(ambiente_limpo: pytest.MonkeyPatch) -> None:
