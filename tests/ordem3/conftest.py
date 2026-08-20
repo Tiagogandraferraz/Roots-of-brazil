@@ -46,6 +46,115 @@ def banco_vazio(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def fonte_forma_baseline(tmp_path: Path) -> Iterator[sqlite3.Connection]:
+    """SQLite com a FORMA exata do baseline: 381 objetos e 1.585 relações.
+
+    O conteúdo é sintético — não é o corpus. O que importa aqui são as
+    contagens por catálogo e por tipo de relação, e o domain/range de cada
+    aresta, porque é isso que o ETL valida antes de escrever.
+
+    Existe para cobrir o caminho de SUCESSO: os demais testes provam que a
+    validação pega erros, e sem este nada provaria que ela deixa passar uma
+    fonte correta. Um bug que reprovasse tudo passaria despercebido.
+    """
+    caminho = tmp_path / "forma_baseline.db"
+    conn = sqlite3.connect(caminho)
+    conn.row_factory = sqlite3.Row
+    conn.executescript(le_ddl())
+
+    def faz_ids(prefixo: str, n: int) -> list[str]:
+        return [f"{prefixo}-{i:06d}" for i in range(1, n + 1)]
+
+    ing, rec, tec = faz_ids("ING", 130), faz_ids("REC", 136), faz_ids("TEC", 38)
+    pov, ter = faz_ids("POV", 17), faz_ids("TER", 18)
+    pat, bio = faz_ids("PAT", 35), faz_ids("BIO", 7)
+
+    for i, x in enumerate(ing):
+        conn.execute(
+            "INSERT INTO ingrediente (id, uuid, slug, created_at, updated_at, version, "
+            "nome_principal, categoria, subcategoria, classe, confiabilidade, nome_pt) "
+            "VALUES (?,?,?,?,?,1,?,?,?,?,?,?)",
+            (x, str(uuid.uuid4()), f"ing-{i}", TS, TS, f"Ingrediente {i}", "Cat", "Sub",
+             "Vegetal", CONF, f"Ingrediente {i}"),
+        )
+    for i, x in enumerate(rec):
+        conn.execute(
+            "INSERT INTO receita (id, uuid, slug, created_at, updated_at, version, nome, "
+            "categoria, subcategoria, estado, regiao, livros_fonte, confiabilidade, nome_pt) "
+            "VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?)",
+            (x, str(uuid.uuid4()), f"rec-{i}", TS, TS, f"Receita {i}", "Cat", "Sub",
+             "Pará", "Norte", "F", CONF, f"Receita {i}"),
+        )
+    for i, x in enumerate(tec):
+        conn.execute(
+            "INSERT INTO tecnica (id, uuid, slug, created_at, updated_at, version, nome, "
+            "descricao, livros_fonte, confiabilidade, categoria, subcategoria, classe, "
+            "nome_pt, descricao_pt) VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?,?)",
+            (x, str(uuid.uuid4()), f"tec-{i}", TS, TS, f"Técnica {i}", "D", "F", CONF,
+             "Cat", "Sub", "Cl", f"Técnica {i}", "D"),
+        )
+    for i, x in enumerate(pov):
+        conn.execute(
+            "INSERT INTO povo (id, uuid, slug, created_at, updated_at, version, povo, regiao, "
+            "livros_fonte, confiabilidade, categoria, subcategoria, classe, nome_pt) "
+            "VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?)",
+            (x, str(uuid.uuid4()), f"pov-{i}", TS, TS, f"Povo {i}", "R", "F", CONF,
+             "Cat", "Sub", "Cl", f"Povo {i}"),
+        )
+    for i, x in enumerate(ter):
+        conn.execute(
+            "INSERT INTO territorio (id, uuid, slug, created_at, updated_at, version, estado, "
+            "livros_fonte, confiabilidade, categoria, subcategoria, classe, nome_pt) "
+            "VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?)",
+            (x, str(uuid.uuid4()), f"ter-{i}", TS, TS, f"Estado {i}", "F", CONF,
+             "Cat", "Sub", "Cl", f"Estado {i}"),
+        )
+    for i, x in enumerate(pat):
+        conn.execute(
+            "INSERT INTO patrimonio (id, uuid, slug, created_at, updated_at, version, categoria, "
+            "elemento, descricao, livros_fonte, confiabilidade, subcategoria, classe, "
+            "nome_pt, descricao_pt) VALUES (?,?,?,?,?,1,?,?,?,?,?,?,?,?,?)",
+            (x, str(uuid.uuid4()), f"pat-{i}", TS, TS, "Cat", f"Elemento {i}", "D", "F", CONF,
+             "Sub", "Cl", f"Elemento {i}", "D"),
+        )
+    for i, x in enumerate(bio):
+        conn.execute(
+            "INSERT INTO bioma (id, uuid, slug, created_at, updated_at, version, nome, descricao, "
+            "fonte, oficial_ibge, nome_pt, descricao_pt) VALUES (?,?,?,?,?,1,?,?,?,1,?,?)",
+            (x, str(uuid.uuid4()), f"bio-{i}", TS, TS, f"Bioma {i}", "D", "IBGE",
+             f"Bioma {i}", "D"),
+        )
+
+    # Contagens por tipo idênticas ao Relatório de Auditoria Sprint 2. As duas
+    # relações com owl:unionOf aparecem quebradas nas suas duas pontas legítimas,
+    # como na auditoria: ASSOCIADO_A_POVO 134+71 e ORIGINARIO_DE 39+28.
+    plano = [
+        ("USA_INGREDIENTE", rec, ing, 895), ("ASSOCIADO_A_POVO", rec, pov, 134),
+        ("ASSOCIADO_A_POVO", ing, pov, 71), ("CULTIVADO_EM", ing, ter, 106),
+        ("UTILIZA_TECNICA", rec, tec, 85), ("PREPARADO_COM", tec, ing, 81),
+        ("OCORRE_EM", rec, ter, 77), ("ORIGINARIO_DE", ing, pov, 39),
+        ("ORIGINARIO_DE", ing, bio, 28), ("PATRIMONIO_DE", pat, pov, 38),
+        ("LOCALIZADO_EM_BIOMA", ter, bio, 24), ("DERIVA_DE", ing, ing, 7),
+    ]
+    n = 0
+    for tipo, origens, destinos, quantos in plano:
+        for k in range(quantos):
+            origem, destino = origens[k % len(origens)], destinos[k % len(destinos)]
+            if origem == destino:  # DERIVA_DE não liga um nó a ele mesmo
+                destino = destinos[(k + 1) % len(destinos)]
+            n += 1
+            conn.execute(
+                "INSERT INTO relacoes (rel_id, origem_id, destino_id, tipo_relacao, "
+                "confiabilidade, observacoes, data_criacao, peso, metodo_calculo_peso) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (f"REL-{n:06d}", origem, destino, tipo, CONF, "sintético", TS, 0.95, "demo"),
+            )
+    conn.commit()
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
 def fonte_sintetica(tmp_path: Path) -> Iterator[sqlite3.Connection]:
     """SQLite com o schema real da Ordem 2 e um mini-corpus consistente.
 

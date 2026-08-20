@@ -120,6 +120,53 @@ def test_contagens_da_fixture_divergem_do_baseline(
     assert "total de arestas — esperado 1585" in texto
 
 
+def test_fonte_no_baseline_passa_sem_divergencia(
+    fonte_forma_baseline: sqlite3.Connection,
+) -> None:
+    """Uma fonte na forma do baseline é APROVADA — o caminho de sucesso.
+
+    Contraparte necessária dos testes acima: eles provam que a validação pega
+    erros; este prova que ela não reprova dado correto. Sem ele, um bug que
+    reprovasse tudo passaria despercebido, já que todos os outros testes
+    esperam divergência.
+    """
+    plano = monta_plano(fonte_forma_baseline)
+    assert plano.divergencias == []
+    assert plano.valido
+    assert plano.total_nos == 381
+    assert sum(plano.contagem_por_tipo.values()) == 1585
+
+
+def test_unioes_owl_quebradas_nas_duas_pontas(
+    fonte_forma_baseline: sqlite3.Connection,
+) -> None:
+    """As relações com owl:unionOf somam certo vindo de labels diferentes.
+
+    ASSOCIADO_A_POVO = 134 de Receita + 71 de Ingrediente; ORIGINARIO_DE =
+    39 para Povo + 28 para Bioma. Se o modelo tivesse achatado qualquer uma
+    das uniões para um único label, o total bateria mas metade das arestas
+    seria recusada por domain/range.
+    """
+    plano = monta_plano(fonte_forma_baseline)
+    assert plano.contagem_por_tipo["ASSOCIADO_A_POVO"] == 205
+    assert plano.contagem_por_tipo["ORIGINARIO_DE"] == 67
+    assert "violando domain/range" not in " | ".join(plano.divergencias)
+
+
+def test_cli_dry_run_aprova_fonte_correta(
+    fonte_forma_baseline: sqlite3.Connection,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Ponta a ponta pela CLI: fonte correta -> código 0 e 'Pronto para --execute'."""
+    caminho = fonte_forma_baseline.execute("PRAGMA database_list").fetchone()["file"]
+    codigo = main(["--db", caminho])
+    saida = capsys.readouterr().out
+    assert codigo == 0
+    assert "nenhuma divergência" in saida
+    assert "Pronto para `--execute`" in saida
+    assert "DRY-RUN: nada foi escrito" in saida
+
+
 def test_uuid_duplicado_e_reportado(fonte_sintetica: sqlite3.Connection) -> None:
     """Colisão de UUID entre catálogos diferentes (o UNIQUE por tabela não pega)."""
     uuid_existente = fonte_sintetica.execute(
