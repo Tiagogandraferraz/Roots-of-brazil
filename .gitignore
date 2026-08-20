@@ -12,6 +12,12 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+# Cobertura: o pyproject roda --cov por padrão, então .coverage é gerado em
+# qualquer `pytest` local. É banco de dados de artefato, não fonte.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 logs/*.log
 .DS_Store
 *.log

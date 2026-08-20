@@ -1,4 +1,3 @@
-```python
 """
 Roots of Brazil — API (esqueleto da Ordem 0).
 
@@ -29,4 +28,3 @@ app = FastAPI(
 def health() -> dict[str, str]:
     logger.info("health check requisitado")
     return {"status": "ok"}
-```

@@ -1,4 +1,3 @@
-```
 # Contribuindo — Roots of Brazil (Plataforma)
 
 ## Branches permanentes
@@ -32,4 +31,3 @@ Tipos: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`
 `main` e `develop` são protegidas: Pull Request obrigatório, pipeline de CI (Ordem 0) verde obrigatório antes de merge. Ver `.github/branch-protection.yml`.
 
 > **Nota de implementação:** a proteção de branch real (bloqueio de push direto) é aplicada nas configurações do provedor Git (GitHub/GitLab) quando o repositório for hospedado remotamente — o arquivo `.github/branch-protection.yml` documenta a regra pretendida; não é executável localmente sem uma conta/API do provedor.
-```

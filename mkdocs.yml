@@ -1,4 +1,3 @@
-```
 site_name: Roots of Brazil — Documentação Técnica
 site_description: Portal de documentação técnica das Ordens de execução (Livro 2)
 docs_dir: docs
@@ -9,7 +8,9 @@ theme:
 nav:
   - Início: index.md
   - Relatórios das Ordens:
-      - Ordem -2 (Consistência): relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md
+      - Ordem -2 (Consistência): relatorio_ordem-2.md
       - Ordem -1 (Governança): relatorio_ordem-1.md
       - Ordem 0 (Setup/CI): relatorio_ordem0.md
-```
+      - Ordem 1 (Ontologia): relatorio_ordem1.md
+      - Ordem 2 (Banco Relacional): relatorio_ordem2.md
+      - Ordem 3 (Neo4j): relatorio_ordem3.md

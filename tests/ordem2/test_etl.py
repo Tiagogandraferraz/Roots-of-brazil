@@ -1,4 +1,3 @@
-```python
 """Testes da Ordem 2 — validam o banco SQLite carregado pelo ETL contra o baseline
 do Relatório de Auditoria Sprint 2 (381 objetos, 1.585 relações, 18 órfãos, 0 duplicidades)."""
 import sqlite3
@@ -69,4 +68,3 @@ def test_mv_grafo_agregado_bate_com_auditoria(conn):
                 "ORIGINARIO_DE": 67, "PATRIMONIO_DE": 38, "LOCALIZADO_EM_BIOMA": 24, "DERIVA_DE": 7}
     obtido = dict(conn.execute("SELECT tipo_relacao, n_instancias FROM mv_grafo_agregado").fetchall())
     assert obtido == esperado
-```

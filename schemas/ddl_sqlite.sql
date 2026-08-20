@@ -1,4 +1,3 @@
-```sql
 -- Roots of Brazil — DDL SQLite (variante dev/local da Ordem 2)
 -- Derivado literalmente do Dicionário de Dados Oficial v1.2, Seções 12-25.
 -- SQLite não tem CREATE TYPE ENUM nativo -> enums implementados via CHECK.
@@ -194,4 +193,3 @@ CREATE VIEW mv_grafo_agregado AS
 SELECT tipo_relacao, COUNT(*) AS n_instancias
 FROM relacoes
 GROUP BY tipo_relacao;
-```
