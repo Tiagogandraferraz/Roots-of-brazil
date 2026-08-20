@@ -1,0 +1,199 @@
+name: Carga Neo4j — Ordem 3 (EXECUTAR — ESCREVE NO BANCO)
+
+# ESTE WORKFLOW ESCREVE NO NEO4J. Diferente do workflow de dry-run, ele roda
+# `--execute` e grava 381 nós e 1.585 arestas na instância apontada por
+# NEO4J_URI.
+#
+# Por isso o disparo não é só um botão: exige digitar uma frase de confirmação
+# no formulário. Um clique acidental em "Run workflow" não escreve nada — o job
+# falha na primeira etapa.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacao:
+        description: 'Digite exatamente: EXECUTAR CARGA REAL'
+        required: true
+        type: string
+        default: ''
+      limpar:
+        description: 'Apagar os nós :ObjetoRoots antes de carregar? Se sim, digite LIMPAR TUDO (senão deixe vazio)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+# Mesmo grupo do workflow de dry-run: os dois apontam para a mesma instância,
+# e uma carga rodando junto com uma verificação daria leitura inconsistente.
+concurrency:
+  group: carga-neo4j-ordem3
+  cancel-in-progress: false
+
+jobs:
+  carregar:
+    name: Carga real no Neo4j
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        # Necessário por causa dos `| tee`: o shell padrão do Actions é
+        # `bash -e` sem pipefail, e o código de saída viria do tee (sempre 0),
+        # mascarando falha do Python. Aqui isso seria grave: uma divergência
+        # não reprovaria o job e a carga seguiria.
+        shell: bash
+
+    env:
+      NEO4J_URI: ${{ secrets.NEO4J_URI }}
+      NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+      NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+      NEO4J_DATABASE: neo4j
+
+    steps:
+      # ---------------------------------------------------------------
+      # PORTÃO 1 — confirmação digitada, antes de qualquer outra coisa
+      # ---------------------------------------------------------------
+      - name: Conferir a frase de confirmação
+        env:
+          CONFIRMACAO: ${{ inputs.confirmacao }}
+        run: |
+          esperado="EXECUTAR CARGA REAL"
+          if [ "$CONFIRMACAO" != "$esperado" ]; then
+            echo "::error::Confirmação inválida. Para executar a carga real é preciso digitar exatamente '$esperado' no campo de confirmação."
+            echo "Recebido: '$CONFIRMACAO'"
+            exit 1
+          fi
+          echo "Confirmação aceita. A carga real está autorizada para esta execução."
+
+      - name: Conferir a confirmação de limpeza (se pedida)
+        env:
+          LIMPAR: ${{ inputs.limpar }}
+        run: |
+          # Vazio = não limpar (caso normal). Qualquer outro valor precisa ser
+          # exatamente 'LIMPAR TUDO': apagar é destrutivo e merece a segunda
+          # digitação, separada da primeira.
+          if [ -z "$LIMPAR" ]; then
+            echo "LIMPAR=nao" >> "$GITHUB_ENV"
+            echo "Sem limpeza. A carga usa MERGE: nós existentes são atualizados, não duplicados."
+          elif [ "$LIMPAR" = "LIMPAR TUDO" ]; then
+            echo "LIMPAR=sim" >> "$GITHUB_ENV"
+            echo "::warning::Limpeza autorizada — os nós :ObjetoRoots serão APAGADOS antes da carga."
+          else
+            echo "::error::Para limpar o grafo é preciso digitar exatamente 'LIMPAR TUDO'. Para não limpar, deixe o campo vazio."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Conferir que os secrets estão cadastrados
+        run: |
+          faltando=""
+          [ -n "$NEO4J_URI" ]      || faltando="$faltando NEO4J_URI"
+          [ -n "$NEO4J_USERNAME" ] || faltando="$faltando NEO4J_USERNAME"
+          [ -n "$NEO4J_PASSWORD" ] || faltando="$faltando NEO4J_PASSWORD"
+          if [ -n "$faltando" ]; then
+            echo "::error::Secrets ausentes:$faltando — cadastrar em Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          echo "Os três secrets estão presentes."
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependências
+        run: pip install --quiet "neo4j>=5.24,<6" openpyxl
+
+      - name: Ordem 2 — gerar o SQLite a partir do corpus
+        run: python scripts/ordem2/etl.py Corpus_Fundador_v1.1.xlsx | tee ordem2.log
+
+      # ---------------------------------------------------------------
+      # PORTÃO 2 — o destino precisa responder antes de escrever nele
+      # ---------------------------------------------------------------
+      - name: Verificar o DESTINO (somente leitura)
+        run: python scripts/ordem3/etl_neo4j.py --verificar-destino | tee destino.log
+
+      # ---------------------------------------------------------------
+      # PORTÃO 3 — a fonte precisa bater com o baseline antes de escrever
+      # ---------------------------------------------------------------
+      - name: DRY-RUN — validar a fonte antes de gravar
+        # Redundante com a validação interna do --execute (que também para
+        # antes de conectar se a fonte divergir), de propósito: deixa no log,
+        # separado, exatamente o que será gravado, antes de gravar.
+        run: python scripts/ordem3/etl_neo4j.py | tee dry-run.log
+
+      # ---------------------------------------------------------------
+      # ESCRITA — só chega aqui se os três portões passaram
+      # ---------------------------------------------------------------
+      - name: EXECUTAR a carga real
+        # O script aplica constraints e índices, carrega em lotes com MERGE e
+        # depois RECONTA consultando o Neo4j (não a fonte), comparando com o
+        # baseline. Divergindo, sai com código 1 e o job reprova.
+        run: |
+          if [ "$LIMPAR" = "sim" ]; then
+            python scripts/ordem3/etl_neo4j.py --execute --limpar | tee execute.log
+          else
+            python scripts/ordem3/etl_neo4j.py --execute | tee execute.log
+          fi
+
+      - name: Conferência final independente
+        # Segunda opinião: consulta o grafo do zero, sem reusar nada do passo
+        # anterior. Se a carga tivesse reportado sucesso indevidamente, aqui
+        # apareceria.
+        run: |
+          python - <<'PY' | tee conferencia.log
+          import sys
+          sys.path.insert(0, ".")
+          from app.database.neo4j import sessao
+          from app.models.grafo import ENTIDADES, TIPOS_RELACAO, LABEL_SUPERCLASSE
+
+          with sessao() as s:
+              nos = s.run(f"MATCH (n:{LABEL_SUPERCLASSE}) RETURN count(n) AS n").single()["n"]
+              arestas = s.run("MATCH ()-[r]->() RETURN count(r) AS n").single()["n"]
+              orfaos = s.run(
+                  f"MATCH (n:{LABEL_SUPERCLASSE}) WHERE NOT (n)--() RETURN count(n) AS n"
+              ).single()["n"]
+              print(f"nós:     {nos} (esperado 381)")
+              print(f"arestas: {arestas} (esperado 1585)")
+              print(f"órfãos:  {orfaos} (esperado 18)")
+              for e in ENTIDADES:
+                  obtido = s.run(f"MATCH (n:{e.label}) RETURN count(n) AS n").single()["n"]
+                  print(f"  :{e.label:<12} {obtido:>5} (esperado {e.instancias_esperadas})")
+              for d in TIPOS_RELACAO:
+                  obtido = s.run(f"MATCH ()-[r:{d.tipo}]->() RETURN count(r) AS n").single()["n"]
+                  print(f"  [:{d.tipo + ']':<21} {obtido:>5} (esperado {d.instancias_esperadas})")
+              if (nos, arestas, orfaos) != (381, 1585, 18):
+                  print("DIVERGÊNCIA na conferência final.")
+                  raise SystemExit(1)
+          print("Conferência final: grafo bate com o baseline.")
+          PY
+
+      - name: Publicar resumo na aba Summary
+        if: always()
+        run: |
+          {
+            echo "## Ordem 3 — CARGA REAL no Neo4j"
+            echo
+            echo "Limpeza prévia: \`${LIMPAR:-nao}\`"
+            echo
+            for arquivo in destino dry-run execute conferencia; do
+              echo "### ${arquivo}"
+              echo '```'
+              cat "${arquivo}.log" 2>/dev/null || echo "(não executado)"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar SQLite e logs como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordem3-carga-real
+          path: |
+            roots_of_brazil_dev.db
+            *.log
+          retention-days: 30
+          if-no-files-found: warn
