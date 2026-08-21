@@ -1,0 +1,4580 @@
+openapi: 3.1.0
+info:
+  title: Roots of Brazil — API do Corpus Fundador
+  version: 1.1.0
+  summary: Camada de acesso somente leitura ao Corpus Fundador v1.1.
+  description: 'Implementa a Especificação Conceitual da API v1.1. Serve as 381 entidades e 1.585 relações
+    do Corpus Fundador, homologado na Auditoria Sprint 2.
+
+
+    **Somente leitura.** Não há POST, PUT ou DELETE: o corpus é curado offline (mineração + auditoria)
+    e publicado como snapshot versionado, não editado pela API — Especificação Conceitual, Seção 6.
+
+
+    **Duas origens de dado.** Listagem e detalhe vêm do banco relacional (Ordem 2); navegação entre entidades
+    e busca global vêm do banco de grafo (Ordem 3). A divisão está documentada em cada operação.
+
+
+    **Fidelidade ao corpus.** Toda propriedade de resposta corresponde 1:1 a uma coluna do Dicionário
+    de Dados Oficial v1.2 — sem agregação, transformação ou dado derivado além do já calculado no corpus
+    (Especificação Conceitual, Seção 7).
+
+
+    **Confiabilidade sempre visível.** Nenhuma resposta esconde o grau de certeza: `confiabilidade` acompanha
+    toda entidade, e `peso`, `fonte`, `pagina` e `observacoes` acompanham toda relação.
+
+
+    **Acesso.** Aberto, sem chave de API. Limite de 100 requisições por minuto por IP; acima disso, 429.
+    CORS liberado para qualquer origem.'
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    name: Roots of Brazil
+servers:
+- url: http://localhost:8000
+  description: Desenvolvimento local.
+tags:
+- name: Ingrediente
+  description: 'Origem: aba ''1. Catálogo Ingredientes''.'
+- name: Receita
+  description: 'Origem: aba ''2. Catálogo Receitas''.'
+- name: Tecnica
+  description: 'Origem: aba ''3. Catálogo Técnicas''.'
+- name: Povo
+  description: 'Origem: aba ''4. Catálogo Povos''.'
+- name: Territorio
+  description: 'Origem: aba ''5. Catálogo Territórios''.'
+- name: Bioma
+  description: 'Origem: aba ''12. Catálogo Biomas''.'
+- name: Patrimonio
+  description: 'Origem: aba ''6. Catálogo Patrimônio''.'
+- name: Relações
+  description: 'Origem: aba ''11. RELACOES''.'
+- name: Busca
+  description: Busca global sobre o índice full-text do grafo.
+- name: Operação
+  description: Endpoints de infraestrutura.
+paths:
+  /v1/ingredientes:
+    get:
+      tags:
+      - Ingrediente
+      summary: Lista ingredientes
+      operationId: listar_ingredientes
+      description: Listagem paginada de ingredientes, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/Categoria'
+      - $ref: '#/components/parameters/Subcategoria'
+      - $ref: '#/components/parameters/Classe'
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Bioma'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de ingredientes.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIngrediente'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/ingredientes/{id}:
+    get:
+      tags:
+      - Ingrediente
+      summary: Detalhe de ingrediente
+      operationId: obter_ingredientes
+      description: Um ingrediente pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links`
+        traz os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Ingrediente encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingrediente'
+              example:
+                id: ING-000031
+                uuid: 4b836d2e-26f6-403a-829a-a3b754f146fd
+                slug: cebola
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                nome_principal: Cebola
+                nomes_regionais: não mencionado
+                origem_texto: não mencionado
+                estado_regiao: não mencionado
+                bioma_texto: não mencionado
+                confiabilidade: 🟢 Confirmado em várias fontes
+                n_livros_fonte: 6
+                n_citacoes: 98
+                origem_registro: mineração 2ª rodada (varredura automática das fichas técnicas de receitas)
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Vegetal
+                categoria: Ingrediente vegetal
+                subcategoria: Hortaliça
+                nome_pt: Cebola
+                _links:
+                  receitas: /v1/ingredientes/ING-000031/receitas
+                  territorios: /v1/ingredientes/ING-000031/territorios
+                  povos: /v1/ingredientes/ING-000031/povos
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/ingredientes/{id}/receitas:
+    get:
+      tags:
+      - Ingrediente
+      summary: Ingrediente → receitas
+      operationId: navegar_ingredientes_receitas
+      description: Receitas que usam este ingrediente. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `USA_INGREDIENTE` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Receitas que usam este ingrediente.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaReceita'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/ingredientes/{id}/territorios:
+    get:
+      tags:
+      - Ingrediente
+      summary: Ingrediente → territorios
+      operationId: navegar_ingredientes_territorios
+      description: Territórios onde o ingrediente é cultivado. Resolvido pelo **banco de grafo** (Ordem
+        3), percorrendo `CULTIVADO_EM` no sentido direto. Peso e proveniência de cada aresta vêm junto,
+        em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Territórios onde o ingrediente é cultivado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaTerritorio'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/ingredientes/{id}/povos:
+    get:
+      tags:
+      - Ingrediente
+      summary: Ingrediente → povos
+      operationId: navegar_ingredientes_povos
+      description: Povos associados ao ingrediente ou dos quais ele é originário. Resolvido pelo **banco
+        de grafo** (Ordem 3), percorrendo `ASSOCIADO_A_POVO`, `ORIGINARIO_DE` no sentido direto. Peso
+        e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Povos associados ao ingrediente ou dos quais ele é originário.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPovo'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/receitas:
+    get:
+      tags:
+      - Receita
+      summary: Lista receitas
+      operationId: listar_receitas
+      description: Listagem paginada de receitas, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/Categoria'
+      - $ref: '#/components/parameters/Estado'
+      - $ref: '#/components/parameters/Regiao'
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de receitas.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaReceita'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/receitas/{id}:
+    get:
+      tags:
+      - Receita
+      summary: Detalhe de receita
+      operationId: obter_receitas
+      description: Um receita pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links`
+        traz os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Receita encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receita'
+              example:
+                id: REC-000001
+                uuid: 3ff8fca8-fdf5-43ad-8250-e0118b27645d
+                slug: acaraje
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                nome: Acarajé
+                estado: Bahia
+                regiao: Nordeste
+                influencia_cultural: Africana (origem do prato e técnica); Africana
+                n_versoes_catalogadas: 2
+                livros_fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); COZINHA BRASILEIRA
+                  (Senac-SP, 2007)
+                confiabilidade: 🟢 Confirmado em várias fontes
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Preparação Culinária
+                categoria: Entrada
+                subcategoria: Entrada
+                nome_pt: Acarajé
+                _links:
+                  ingredientes: /v1/receitas/REC-000001/ingredientes
+                  tecnicas: /v1/receitas/REC-000001/tecnicas
+                  territorio: /v1/receitas/REC-000001/territorio
+                  povos: /v1/receitas/REC-000001/povos
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/receitas/{id}/ingredientes:
+    get:
+      tags:
+      - Receita
+      summary: Receita → ingredientes
+      operationId: navegar_receitas_ingredientes
+      description: Ingredientes da receita. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `USA_INGREDIENTE`
+        no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Ingredientes da receita.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIngrediente'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/receitas/{id}/tecnicas:
+    get:
+      tags:
+      - Receita
+      summary: Receita → tecnicas
+      operationId: navegar_receitas_tecnicas
+      description: Técnicas empregadas no preparo. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `UTILIZA_TECNICA` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Técnicas empregadas no preparo.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaTecnica'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/receitas/{id}/territorio:
+    get:
+      tags:
+      - Receita
+      summary: Receita → territorio
+      operationId: navegar_receitas_territorio
+      description: Território de origem da receita. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `OCORRE_EM` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Território de origem da receita.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Territorio'
+              example:
+                id: TER-000001
+                uuid: 7e1979a2-114a-47ff-8c32-6a83f451683b
+                slug: amazonas
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                estado: Amazonas
+                bioma_texto: Floresta Amazônica
+                ingredientes: Tucupi, jambu, mandioca, peixes de escamas (pirarucu, tambaqui, tucunaré),
+                  guaraná, castanha-do-pará
+                receitas: Pato no Tucupi, Tacacá, Caldeirada de Tucunaré
+                produtos_tradicionais: Tacacá vendido em barraquinhas às 17h; preferência por peixe de
+                  escamas (tabu contra peixe 'liso'); farinhas regionais
+                livros_fonte: 'GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO HISTÓRICO (Tomazoni)'
+                confiabilidade: 🟡 Confirmado em uma única fonte
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Unidade Geopolítica
+                categoria: Unidade Federativa
+                subcategoria: Estado
+                nome_pt: Amazonas
+                _links:
+                  receitas: /v1/territorios/TER-000001/receitas
+                  ingredientes: /v1/territorios/TER-000001/ingredientes
+                  biomas: /v1/territorios/TER-000001/biomas
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/receitas/{id}/povos:
+    get:
+      tags:
+      - Receita
+      summary: Receita → povos
+      operationId: navegar_receitas_povos
+      description: Povos de influência cultural. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `ASSOCIADO_A_POVO` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Povos de influência cultural.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPovo'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/tecnicas:
+    get:
+      tags:
+      - Tecnica
+      summary: Lista tecnicas
+      operationId: listar_tecnicas
+      description: Listagem paginada de tecnicas, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/Categoria'
+      - $ref: '#/components/parameters/Subcategoria'
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de tecnicas.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaTecnica'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/tecnicas/{id}:
+    get:
+      tags:
+      - Tecnica
+      summary: Detalhe de tecnica
+      operationId: obter_tecnicas
+      description: Um tecnica pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links`
+        traz os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Tecnica encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tecnica'
+              example:
+                id: TEC-000001
+                uuid: dabab374-fd84-4874-91b8-3f89d110b506
+                slug: assar-em-brasa-envolto-em-folha-de-bananeira
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                nome: Assar em brasa envolto em folha de bananeira
+                descricao: O alimento (peixe, ave) é envolto em folha de bananeira e assado diretamente
+                  sobre as brasas, sendo virado quando um lado escurece, mantendo a umidade interna.
+                ingredientes_utilizados: Peixe (tainha), folha de bananeira
+                receitas: Pataraska Takatxo
+                origem_cultural: Indígena
+                livros_fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas)
+                confiabilidade: 🟡 Confirmado em uma única fonte
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Processo Culinário
+                categoria: Processo/Método de preparo
+                subcategoria: não classificado nesta rodada
+                nome_pt: Assar em brasa envolto em folha de bananeira
+                descricao_pt: O alimento (peixe, ave) é envolto em folha de bananeira e assado diretamente
+                  sobre as brasas, sendo virado quando um lado escurece, mantendo a umidade interna.
+                _links:
+                  ingredientes: /v1/tecnicas/TEC-000001/ingredientes
+                  receitas: /v1/tecnicas/TEC-000001/receitas
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/tecnicas/{id}/ingredientes:
+    get:
+      tags:
+      - Tecnica
+      summary: Tecnica → ingredientes
+      operationId: navegar_tecnicas_ingredientes
+      description: Ingredientes preparados com esta técnica. Resolvido pelo **banco de grafo** (Ordem
+        3), percorrendo `PREPARADO_COM` no sentido direto. Peso e proveniência de cada aresta vêm junto,
+        em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Ingredientes preparados com esta técnica.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIngrediente'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/tecnicas/{id}/receitas:
+    get:
+      tags:
+      - Tecnica
+      summary: Tecnica → receitas
+      operationId: navegar_tecnicas_receitas
+      description: Receitas que empregam esta técnica. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `UTILIZA_TECNICA` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Receitas que empregam esta técnica.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaReceita'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/povos:
+    get:
+      tags:
+      - Povo
+      summary: Lista povos
+      operationId: listar_povos
+      description: Listagem paginada de povos, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/Categoria'
+      - $ref: '#/components/parameters/Regiao'
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de povos.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPovo'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/povos/{id}:
+    get:
+      tags:
+      - Povo
+      summary: Detalhe de povo
+      operationId: obter_povos
+      description: Um povo pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz
+        os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Povo encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Povo'
+              example:
+                id: POV-000001
+                uuid: 7b90bb72-4676-49f3-9f2b-148c62c98e03
+                slug: africanos-diaspora-escravizada
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                povo: Africanos (Diáspora Escravizada)
+                regiao: Bahia (Recôncavo) e Nordeste; Bahia (Salvador e Recôncavo Baiano); Nacional (mão
+                  de obra nos engenhos e minas); Bahia; Maranhão
+                ingredientes_associados: Azeite de dendê, pimenta malagueta, quiabo, banana, coco, café,
+                  inhame, gengibre, amendoim (uso culinário), jiló, melancia; Dendê, quiabo, camarão seco,
+                  leite de coco, pimenta malagueta; Azeite de dendê, quiabo, banana, coco, café, pimenta-malagueta;
+                  Azeite de dendê, feijão-fradinho, camarão seco, castanha de caju, amendoim; Vinagreira
+                  (planta de origem africana), gergelim (via árabe)
+                receitas: Acarajé, vatapá, caruru, moqueca, xinxim de galinha, farofa, quibebe; Acarajés,
+                  moquecas, vatapás, xinxins; Angu (comida de senzala), moquecas, xinxim, vatapá; Acarajé,
+                  Vatapá, Caruru, Xinxim de Galinha, Molho de Pimenta para Acarajé; Arroz de cuxá
+                praticas_culinarias: Introdução do dendê e da pimenta malagueta | técnica de temperar
+                  com condimentos que dão cor/sabor | preparo de pirões, farofas e cozidos africanos |
+                  Culinária ritual ('comida de santo/comida dos orixás') | fritura em dendê | oferendas
+                  culinárias aos orixás | Adaptação forçada às condições da escravidão | técnicas ancestrais
+                  de agricultura aplicadas nas hortas coloniais | reaproveitamento das sobras da Casa
+                  Grande | Origem do acarajé (Nigéria/África Ocidental) | fritura em dendê quente | bater
+                  massa para aerar | Preparo de molhos à base de folhas ácidas (cuxá), fusão com técnicas
+                  árabes e portuguesas
+                livros_fonte: 'APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); CAPACITAÇÃO CHEF
+                  - COZINHA BRASILEIRA (Nicolau Rosa); GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO
+                  HISTÓRICO (Tomazoni)'
+                confiabilidade: 🟢 Confirmado em várias fontes
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Povo/Etnia Formadora
+                categoria: Grupo Sociocultural
+                subcategoria: não classificado nesta rodada
+                nome_pt: Africanos (Diáspora Escravizada)
+                _links:
+                  ingredientes: /v1/povos/POV-000001/ingredientes
+                  receitas: /v1/povos/POV-000001/receitas
+                  patrimonio: /v1/povos/POV-000001/patrimonio
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/povos/{id}/ingredientes:
+    get:
+      tags:
+      - Povo
+      summary: Povo → ingredientes
+      operationId: navegar_povos_ingredientes
+      description: Ingredientes associados ao povo ou dele originários. Resolvido pelo **banco de grafo**
+        (Ordem 3), percorrendo `ASSOCIADO_A_POVO`, `ORIGINARIO_DE` no sentido inverso. Peso e proveniência
+        de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Ingredientes associados ao povo ou dele originários.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIngrediente'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/povos/{id}/receitas:
+    get:
+      tags:
+      - Povo
+      summary: Povo → receitas
+      operationId: navegar_povos_receitas
+      description: Receitas associadas ao povo. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `ASSOCIADO_A_POVO` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Receitas associadas ao povo.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaReceita'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/povos/{id}/patrimonio:
+    get:
+      tags:
+      - Povo
+      summary: Povo → patrimonio
+      operationId: navegar_povos_patrimonio
+      description: Itens de patrimônio do povo. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `PATRIMONIO_DE` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Itens de patrimônio do povo.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPatrimonio'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/territorios:
+    get:
+      tags:
+      - Territorio
+      summary: Lista territorios
+      operationId: listar_territorios
+      description: Listagem paginada de territorios, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/Categoria'
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de territorios.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaTerritorio'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/territorios/{id}:
+    get:
+      tags:
+      - Territorio
+      summary: Detalhe de territorio
+      operationId: obter_territorios
+      description: Um territorio pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links`
+        traz os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Territorio encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Territorio'
+              example:
+                id: TER-000001
+                uuid: 7e1979a2-114a-47ff-8c32-6a83f451683b
+                slug: amazonas
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                estado: Amazonas
+                bioma_texto: Floresta Amazônica
+                ingredientes: Tucupi, jambu, mandioca, peixes de escamas (pirarucu, tambaqui, tucunaré),
+                  guaraná, castanha-do-pará
+                receitas: Pato no Tucupi, Tacacá, Caldeirada de Tucunaré
+                produtos_tradicionais: Tacacá vendido em barraquinhas às 17h; preferência por peixe de
+                  escamas (tabu contra peixe 'liso'); farinhas regionais
+                livros_fonte: 'GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO HISTÓRICO (Tomazoni)'
+                confiabilidade: 🟡 Confirmado em uma única fonte
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Unidade Geopolítica
+                categoria: Unidade Federativa
+                subcategoria: Estado
+                nome_pt: Amazonas
+                _links:
+                  receitas: /v1/territorios/TER-000001/receitas
+                  ingredientes: /v1/territorios/TER-000001/ingredientes
+                  biomas: /v1/territorios/TER-000001/biomas
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/territorios/{id}/receitas:
+    get:
+      tags:
+      - Territorio
+      summary: Territorio → receitas
+      operationId: navegar_territorios_receitas
+      description: Receitas que ocorrem no território. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `OCORRE_EM` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Receitas que ocorrem no território.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaReceita'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/territorios/{id}/ingredientes:
+    get:
+      tags:
+      - Territorio
+      summary: Territorio → ingredientes
+      operationId: navegar_territorios_ingredientes
+      description: Ingredientes cultivados no território. Resolvido pelo **banco de grafo** (Ordem 3),
+        percorrendo `CULTIVADO_EM` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em
+        `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Ingredientes cultivados no território.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIngrediente'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/territorios/{id}/biomas:
+    get:
+      tags:
+      - Territorio
+      summary: Territorio → biomas
+      operationId: navegar_territorios_biomas
+      description: Biomas em que o território se localiza. Resolvido pelo **banco de grafo** (Ordem 3),
+        percorrendo `LOCALIZADO_EM_BIOMA` no sentido direto. Peso e proveniência de cada aresta vêm junto,
+        em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Biomas em que o território se localiza.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaBioma'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/biomas:
+    get:
+      tags:
+      - Bioma
+      summary: Lista biomas
+      operationId: listar_biomas
+      description: Listagem paginada de biomas, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/OficialIbge'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de biomas.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaBioma'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/biomas/{id}:
+    get:
+      tags:
+      - Bioma
+      summary: Detalhe de bioma
+      operationId: obter_biomas
+      description: Um bioma pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz
+        os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Bioma encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bioma'
+              example:
+                id: BIO-000001
+                uuid: a8118cce-358e-4ff6-afbc-022ffd0db955
+                slug: amazonia
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                nome: Amazônia
+                descricao: Maior bioma brasileiro, floresta tropical úmida da bacia amazônica; base da
+                  culinária ribeirinha e indígena do Norte.
+                territorios_associados_n: 3
+                ingredientes_associados_n: 16
+                fonte: Consolidado a partir dos campos Bioma das Abas 1 e 5 (Corpus Fundador v1.0) + nomenclatura
+                  oficial dos 6 biomas do IBGE
+                oficial_ibge: true
+                nome_pt: Amazônia
+                descricao_pt: Maior bioma brasileiro, floresta tropical úmida da bacia amazônica; base
+                  da culinária ribeirinha e indígena do Norte.
+                _links:
+                  territorios: /v1/biomas/BIO-000001/territorios
+                  ingredientes: /v1/biomas/BIO-000001/ingredientes
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/biomas/{id}/territorios:
+    get:
+      tags:
+      - Bioma
+      summary: Bioma → territorios
+      operationId: navegar_biomas_territorios
+      description: Territórios localizados neste bioma. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo
+        `LOCALIZADO_EM_BIOMA` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Territórios localizados neste bioma.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaTerritorio'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/biomas/{id}/ingredientes:
+    get:
+      tags:
+      - Bioma
+      summary: Bioma → ingredientes
+      operationId: navegar_biomas_ingredientes
+      description: Ingredientes originários deste bioma. Resolvido pelo **banco de grafo** (Ordem 3),
+        percorrendo `ORIGINARIO_DE` no sentido inverso. Peso e proveniência de cada aresta vêm junto,
+        em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Ingredientes originários deste bioma.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaIngrediente'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/patrimonio:
+    get:
+      tags:
+      - Patrimonio
+      summary: Lista patrimonio
+      operationId: listar_patrimonio
+      description: Listagem paginada de patrimonio, resolvida pelo **banco relacional** (Ordem 2). Filtros
+        conforme a Especificação Conceitual, Seção 2.
+      parameters:
+      - $ref: '#/components/parameters/Categoria'
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Q'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/Order'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Página de patrimonio.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPatrimonio'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/patrimonio/{id}:
+    get:
+      tags:
+      - Patrimonio
+      summary: Detalhe de patrimonio
+      operationId: obter_patrimonio
+      description: Um patrimonio pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links`
+        traz os sub-recursos de navegação.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Expand'
+      responses:
+        '200':
+          description: Patrimonio encontrado.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patrimonio'
+              example:
+                id: PAT-000001
+                uuid: 6e8a22a8-761b-4019-b614-65cd125eface
+                slug: bebida-de-pimenta-dos-caiapos-cabinda
+                created_at: '2026-08-05T00:00:00Z'
+                updated_at: '2026-08-05T00:00:00Z'
+                version: 1
+                categoria: Ritual
+                elemento: Bebida de pimenta dos caiapós / Cabinda
+                descricao: 'Consumo ritualizado de pimentas em bebidas: os índios caiapós de Goiás preparavam
+                  uma bebida à base de pimentas, assim como havia na Bahia uma bebida de origem africana
+                  chamada Cabinda, também apimentada.'
+                povo_regiao_relacionada: Indígenas (caiapós) / Africanos (Bahia)
+                livros_fonte: CAPACITAÇÃO CHEF - COZINHA BRASILEIRA (Nicolau Rosa)
+                confiabilidade: 🟡 Confirmado em uma única fonte
+                macrogrupo: não classificado
+                grupo: não classificado
+                ordem_taxonomica: não classificado
+                familia: não classificado
+                classe: Patrimônio Cultural Imaterial
+                subcategoria: Ritual
+                nome_pt: Bebida de pimenta dos caiapós / Cabinda
+                descricao_pt: 'Consumo ritualizado de pimentas em bebidas: os índios caiapós de Goiás
+                  preparavam uma bebida à base de pimentas, assim como havia na Bahia uma bebida de origem
+                  africana chamada Cabinda, também apimentada.'
+                _links:
+                  povos_territorios: /v1/patrimonio/PAT-000001/povos_territorios
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/patrimonio/{id}/povos_territorios:
+    get:
+      tags:
+      - Patrimonio
+      summary: Patrimonio → povos_territorios
+      operationId: navegar_patrimonio_povos_territorios
+      description: Povos aos quais o item de patrimônio pertence. Resolvido pelo **banco de grafo** (Ordem
+        3), percorrendo `PATRIMONIO_DE` no sentido direto. Peso e proveniência de cada aresta vêm junto,
+        em `_relacao`.
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/Confiabilidade'
+      responses:
+        '200':
+          description: Povos aos quais o item de patrimônio pertence.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaPovo'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Objeto não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/relacoes:
+    get:
+      tags:
+      - Relações
+      summary: Lista relações
+      operationId: listar_relacoes
+      description: Acesso direto à camada RELACOES — Especificação Conceitual, Seção 3. Resolvido pelo
+        **banco de grafo** (Ordem 3), que guarda peso, confiabilidade e proveniência como propriedades
+        nativas da aresta.
+      parameters:
+      - name: origem_id
+        in: query
+        required: false
+        description: Filtra por ID de origem exato.
+        schema:
+          type: string
+        example: REC-000001
+      - name: destino_id
+        in: query
+        required: false
+        description: Filtra por ID de destino exato.
+        schema:
+          type: string
+        example: ING-000010
+      - name: tipo_relacao
+        in: query
+        required: false
+        description: Um dos 12 tipos da ontologia. Dicionário v1.2, Seção 21.
+        schema:
+          type: string
+          enum:
+          - USA_INGREDIENTE
+          - ASSOCIADO_A_POVO
+          - CULTIVADO_EM
+          - UTILIZA_TECNICA
+          - PREPARADO_COM
+          - OCORRE_EM
+          - ORIGINARIO_DE
+          - PATRIMONIO_DE
+          - LOCALIZADO_EM_BIOMA
+          - DERIVA_DE
+          - VARIANTE_REGIONAL
+          - SIMILAR_A
+        example: USA_INGREDIENTE
+      - $ref: '#/components/parameters/Confiabilidade'
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Página de relações.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaRelacao'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '422':
+          description: origem_id/destino_id não corresponde a entidade conhecida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /v1/busca:
+    get:
+      tags:
+      - Busca
+      summary: Busca global
+      operationId: busca_global
+      description: Busca textual multi-entidade — Especificação Conceitual, Seção 4. Resolvida pelo **índice
+        full-text do banco de grafo** (`objeto_roots_nome_ft`, criado na carga da Ordem 3 sobre `nome_pt`
+        e `descricao_pt`). Retorna itens heterogêneos, cada um com `tipo` indicando o catálogo de origem.
+      parameters:
+      - name: q
+        in: query
+        required: true
+        description: Termo de busca. Obrigatório.
+        schema:
+          type: string
+          minLength: 1
+        example: mandioca
+      - name: tipos
+        in: query
+        required: false
+        description: Lista separada por vírgula, para restringir os catálogos. Omitido, busca em todos.
+        schema:
+          type: string
+        example: ingrediente,receita
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Resultados heterogêneos, ordenados por relevância.
+          headers:
+            ETag:
+              description: Hash forte do corpo, para revalidação com If-None-Match.
+              schema:
+                type: string
+            Cache-Control:
+              description: O corpus muda por versão, não em tempo real.
+              schema:
+                type: string
+            X-RateLimit-Limit:
+              description: Requisições permitidas por janela.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requisições restantes na janela.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaBusca'
+        '304':
+          description: Não modificado — o ETag enviado ainda vale.
+        '400':
+          description: Parâmetro de query inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '429':
+          description: Limite de 100 requisições por minuto por IP excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+          headers:
+            Retry-After:
+              description: Segundos até a próxima janela.
+              schema:
+                type: integer
+        '500':
+          description: Erro não tratado no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /health:
+    get:
+      tags:
+      - Operação
+      summary: Healthcheck
+      operationId: health
+      description: Liveness do serviço. Usado pelo healthcheck do docker-compose.
+      responses:
+        '200':
+          description: Serviço no ar.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required:
+                - status
+                additionalProperties: false
+              example:
+                status: ok
+components:
+  schemas:
+    Ingrediente:
+      type: object
+      description: 'Ingrediente do Corpus Fundador. Origem: aba ''1. Catálogo Ingredientes'' (Especificação
+        Conceitual, Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - nome_principal
+      - confiabilidade
+      - macrogrupo
+      - grupo
+      - ordem_taxonomica
+      - familia
+      - classe
+      - categoria
+      - subcategoria
+      - nome_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        nome_principal:
+          type: string
+        nomes_regionais:
+          type:
+          - string
+          - 'null'
+        origem_texto:
+          type:
+          - string
+          - 'null'
+        estado_regiao:
+          type:
+          - string
+          - 'null'
+        bioma_texto:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        n_livros_fonte:
+          type:
+          - integer
+          - 'null'
+        n_citacoes:
+          type:
+          - integer
+          - 'null'
+        origem_registro:
+          type:
+          - string
+          - 'null'
+        liv_id:
+          type:
+          - string
+          - 'null'
+        macrogrupo:
+          type: string
+        grupo:
+          type: string
+        ordem_taxonomica:
+          type: string
+        familia:
+          type: string
+        classe:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type:
+          - string
+          - 'null'
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: ING-000031
+        uuid: 4b836d2e-26f6-403a-829a-a3b754f146fd
+        slug: cebola
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        nome_principal: Cebola
+        nomes_regionais: não mencionado
+        origem_texto: não mencionado
+        estado_regiao: não mencionado
+        bioma_texto: não mencionado
+        confiabilidade: 🟢 Confirmado em várias fontes
+        n_livros_fonte: 6
+        n_citacoes: 98
+        origem_registro: mineração 2ª rodada (varredura automática das fichas técnicas de receitas)
+        macrogrupo: não classificado
+        grupo: não classificado
+        ordem_taxonomica: não classificado
+        familia: não classificado
+        classe: Vegetal
+        categoria: Ingrediente vegetal
+        subcategoria: Hortaliça
+        nome_pt: Cebola
+        _links:
+          receitas: /v1/ingredientes/ING-000031/receitas
+          territorios: /v1/ingredientes/ING-000031/territorios
+          povos: /v1/ingredientes/ING-000031/povos
+    PaginaIngrediente:
+      type: object
+      description: Página de ingredientes.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ingrediente'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: ING-000031
+          uuid: 4b836d2e-26f6-403a-829a-a3b754f146fd
+          slug: cebola
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          nome_principal: Cebola
+          nomes_regionais: não mencionado
+          origem_texto: não mencionado
+          estado_regiao: não mencionado
+          bioma_texto: não mencionado
+          confiabilidade: 🟢 Confirmado em várias fontes
+          n_livros_fonte: 6
+          n_citacoes: 98
+          origem_registro: mineração 2ª rodada (varredura automática das fichas técnicas de receitas)
+          macrogrupo: não classificado
+          grupo: não classificado
+          ordem_taxonomica: não classificado
+          familia: não classificado
+          classe: Vegetal
+          categoria: Ingrediente vegetal
+          subcategoria: Hortaliça
+          nome_pt: Cebola
+          _links:
+            receitas: /v1/ingredientes/ING-000031/receitas
+            territorios: /v1/ingredientes/ING-000031/territorios
+            povos: /v1/ingredientes/ING-000031/povos
+    Receita:
+      type: object
+      description: 'Receita do Corpus Fundador. Origem: aba ''2. Catálogo Receitas'' (Especificação Conceitual,
+        Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - nome
+      - estado
+      - regiao
+      - livros_fonte
+      - confiabilidade
+      - macrogrupo
+      - grupo
+      - ordem_taxonomica
+      - familia
+      - classe
+      - categoria
+      - subcategoria
+      - nome_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        nome:
+          type: string
+        estado:
+          type: string
+        regiao:
+          type: string
+        influencia_cultural:
+          type:
+          - string
+          - 'null'
+        n_versoes_catalogadas:
+          type:
+          - integer
+          - 'null'
+        livros_fonte:
+          type: string
+        liv_id:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        macrogrupo:
+          type: string
+        grupo:
+          type: string
+        ordem_taxonomica:
+          type: string
+        familia:
+          type: string
+        classe:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type:
+          - string
+          - 'null'
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: REC-000001
+        uuid: 3ff8fca8-fdf5-43ad-8250-e0118b27645d
+        slug: acaraje
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        nome: Acarajé
+        estado: Bahia
+        regiao: Nordeste
+        influencia_cultural: Africana (origem do prato e técnica); Africana
+        n_versoes_catalogadas: 2
+        livros_fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); COZINHA BRASILEIRA (Senac-SP,
+          2007)
+        confiabilidade: 🟢 Confirmado em várias fontes
+        macrogrupo: não classificado
+        grupo: não classificado
+        ordem_taxonomica: não classificado
+        familia: não classificado
+        classe: Preparação Culinária
+        categoria: Entrada
+        subcategoria: Entrada
+        nome_pt: Acarajé
+        _links:
+          ingredientes: /v1/receitas/REC-000001/ingredientes
+          tecnicas: /v1/receitas/REC-000001/tecnicas
+          territorio: /v1/receitas/REC-000001/territorio
+          povos: /v1/receitas/REC-000001/povos
+    PaginaReceita:
+      type: object
+      description: Página de receitas.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Receita'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: REC-000001
+          uuid: 3ff8fca8-fdf5-43ad-8250-e0118b27645d
+          slug: acaraje
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          nome: Acarajé
+          estado: Bahia
+          regiao: Nordeste
+          influencia_cultural: Africana (origem do prato e técnica); Africana
+          n_versoes_catalogadas: 2
+          livros_fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); COZINHA BRASILEIRA (Senac-SP,
+            2007)
+          confiabilidade: 🟢 Confirmado em várias fontes
+          macrogrupo: não classificado
+          grupo: não classificado
+          ordem_taxonomica: não classificado
+          familia: não classificado
+          classe: Preparação Culinária
+          categoria: Entrada
+          subcategoria: Entrada
+          nome_pt: Acarajé
+          _links:
+            ingredientes: /v1/receitas/REC-000001/ingredientes
+            tecnicas: /v1/receitas/REC-000001/tecnicas
+            territorio: /v1/receitas/REC-000001/territorio
+            povos: /v1/receitas/REC-000001/povos
+    Tecnica:
+      type: object
+      description: 'Tecnica do Corpus Fundador. Origem: aba ''3. Catálogo Técnicas'' (Especificação Conceitual,
+        Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - nome
+      - descricao
+      - livros_fonte
+      - confiabilidade
+      - macrogrupo
+      - grupo
+      - ordem_taxonomica
+      - familia
+      - classe
+      - categoria
+      - subcategoria
+      - nome_pt
+      - descricao_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        nome:
+          type: string
+        descricao:
+          type: string
+        ingredientes_utilizados:
+          type:
+          - string
+          - 'null'
+        receitas:
+          type:
+          - string
+          - 'null'
+        origem_cultural:
+          type:
+          - string
+          - 'null'
+        livros_fonte:
+          type: string
+        liv_id:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        macrogrupo:
+          type: string
+        grupo:
+          type: string
+        ordem_taxonomica:
+          type: string
+        familia:
+          type: string
+        classe:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type: string
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: TEC-000001
+        uuid: dabab374-fd84-4874-91b8-3f89d110b506
+        slug: assar-em-brasa-envolto-em-folha-de-bananeira
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        nome: Assar em brasa envolto em folha de bananeira
+        descricao: O alimento (peixe, ave) é envolto em folha de bananeira e assado diretamente sobre
+          as brasas, sendo virado quando um lado escurece, mantendo a umidade interna.
+        ingredientes_utilizados: Peixe (tainha), folha de bananeira
+        receitas: Pataraska Takatxo
+        origem_cultural: Indígena
+        livros_fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas)
+        confiabilidade: 🟡 Confirmado em uma única fonte
+        macrogrupo: não classificado
+        grupo: não classificado
+        ordem_taxonomica: não classificado
+        familia: não classificado
+        classe: Processo Culinário
+        categoria: Processo/Método de preparo
+        subcategoria: não classificado nesta rodada
+        nome_pt: Assar em brasa envolto em folha de bananeira
+        descricao_pt: O alimento (peixe, ave) é envolto em folha de bananeira e assado diretamente sobre
+          as brasas, sendo virado quando um lado escurece, mantendo a umidade interna.
+        _links:
+          ingredientes: /v1/tecnicas/TEC-000001/ingredientes
+          receitas: /v1/tecnicas/TEC-000001/receitas
+    PaginaTecnica:
+      type: object
+      description: Página de tecnicas.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tecnica'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: TEC-000001
+          uuid: dabab374-fd84-4874-91b8-3f89d110b506
+          slug: assar-em-brasa-envolto-em-folha-de-bananeira
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          nome: Assar em brasa envolto em folha de bananeira
+          descricao: O alimento (peixe, ave) é envolto em folha de bananeira e assado diretamente sobre
+            as brasas, sendo virado quando um lado escurece, mantendo a umidade interna.
+          ingredientes_utilizados: Peixe (tainha), folha de bananeira
+          receitas: Pataraska Takatxo
+          origem_cultural: Indígena
+          livros_fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas)
+          confiabilidade: 🟡 Confirmado em uma única fonte
+          macrogrupo: não classificado
+          grupo: não classificado
+          ordem_taxonomica: não classificado
+          familia: não classificado
+          classe: Processo Culinário
+          categoria: Processo/Método de preparo
+          subcategoria: não classificado nesta rodada
+          nome_pt: Assar em brasa envolto em folha de bananeira
+          descricao_pt: O alimento (peixe, ave) é envolto em folha de bananeira e assado diretamente sobre
+            as brasas, sendo virado quando um lado escurece, mantendo a umidade interna.
+          _links:
+            ingredientes: /v1/tecnicas/TEC-000001/ingredientes
+            receitas: /v1/tecnicas/TEC-000001/receitas
+    Povo:
+      type: object
+      description: 'Povo do Corpus Fundador. Origem: aba ''4. Catálogo Povos'' (Especificação Conceitual,
+        Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - povo
+      - livros_fonte
+      - confiabilidade
+      - macrogrupo
+      - grupo
+      - ordem_taxonomica
+      - familia
+      - classe
+      - categoria
+      - subcategoria
+      - nome_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        povo:
+          type: string
+        regiao:
+          type:
+          - string
+          - 'null'
+        ingredientes_associados:
+          type:
+          - string
+          - 'null'
+        receitas:
+          type:
+          - string
+          - 'null'
+        praticas_culinarias:
+          type:
+          - string
+          - 'null'
+        livros_fonte:
+          type: string
+        liv_id:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        macrogrupo:
+          type: string
+        grupo:
+          type: string
+        ordem_taxonomica:
+          type: string
+        familia:
+          type: string
+        classe:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type:
+          - string
+          - 'null'
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: POV-000001
+        uuid: 7b90bb72-4676-49f3-9f2b-148c62c98e03
+        slug: africanos-diaspora-escravizada
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        povo: Africanos (Diáspora Escravizada)
+        regiao: Bahia (Recôncavo) e Nordeste; Bahia (Salvador e Recôncavo Baiano); Nacional (mão de obra
+          nos engenhos e minas); Bahia; Maranhão
+        ingredientes_associados: Azeite de dendê, pimenta malagueta, quiabo, banana, coco, café, inhame,
+          gengibre, amendoim (uso culinário), jiló, melancia; Dendê, quiabo, camarão seco, leite de coco,
+          pimenta malagueta; Azeite de dendê, quiabo, banana, coco, café, pimenta-malagueta; Azeite de
+          dendê, feijão-fradinho, camarão seco, castanha de caju, amendoim; Vinagreira (planta de origem
+          africana), gergelim (via árabe)
+        receitas: Acarajé, vatapá, caruru, moqueca, xinxim de galinha, farofa, quibebe; Acarajés, moquecas,
+          vatapás, xinxins; Angu (comida de senzala), moquecas, xinxim, vatapá; Acarajé, Vatapá, Caruru,
+          Xinxim de Galinha, Molho de Pimenta para Acarajé; Arroz de cuxá
+        praticas_culinarias: Introdução do dendê e da pimenta malagueta | técnica de temperar com condimentos
+          que dão cor/sabor | preparo de pirões, farofas e cozidos africanos | Culinária ritual ('comida
+          de santo/comida dos orixás') | fritura em dendê | oferendas culinárias aos orixás | Adaptação
+          forçada às condições da escravidão | técnicas ancestrais de agricultura aplicadas nas hortas
+          coloniais | reaproveitamento das sobras da Casa Grande | Origem do acarajé (Nigéria/África Ocidental)
+          | fritura em dendê quente | bater massa para aerar | Preparo de molhos à base de folhas ácidas
+          (cuxá), fusão com técnicas árabes e portuguesas
+        livros_fonte: 'APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); CAPACITAÇÃO CHEF - COZINHA
+          BRASILEIRA (Nicolau Rosa); GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO HISTÓRICO
+          (Tomazoni)'
+        confiabilidade: 🟢 Confirmado em várias fontes
+        macrogrupo: não classificado
+        grupo: não classificado
+        ordem_taxonomica: não classificado
+        familia: não classificado
+        classe: Povo/Etnia Formadora
+        categoria: Grupo Sociocultural
+        subcategoria: não classificado nesta rodada
+        nome_pt: Africanos (Diáspora Escravizada)
+        _links:
+          ingredientes: /v1/povos/POV-000001/ingredientes
+          receitas: /v1/povos/POV-000001/receitas
+          patrimonio: /v1/povos/POV-000001/patrimonio
+    PaginaPovo:
+      type: object
+      description: Página de povos.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Povo'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: POV-000001
+          uuid: 7b90bb72-4676-49f3-9f2b-148c62c98e03
+          slug: africanos-diaspora-escravizada
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          povo: Africanos (Diáspora Escravizada)
+          regiao: Bahia (Recôncavo) e Nordeste; Bahia (Salvador e Recôncavo Baiano); Nacional (mão de
+            obra nos engenhos e minas); Bahia; Maranhão
+          ingredientes_associados: Azeite de dendê, pimenta malagueta, quiabo, banana, coco, café, inhame,
+            gengibre, amendoim (uso culinário), jiló, melancia; Dendê, quiabo, camarão seco, leite de
+            coco, pimenta malagueta; Azeite de dendê, quiabo, banana, coco, café, pimenta-malagueta; Azeite
+            de dendê, feijão-fradinho, camarão seco, castanha de caju, amendoim; Vinagreira (planta de
+            origem africana), gergelim (via árabe)
+          receitas: Acarajé, vatapá, caruru, moqueca, xinxim de galinha, farofa, quibebe; Acarajés, moquecas,
+            vatapás, xinxins; Angu (comida de senzala), moquecas, xinxim, vatapá; Acarajé, Vatapá, Caruru,
+            Xinxim de Galinha, Molho de Pimenta para Acarajé; Arroz de cuxá
+          praticas_culinarias: Introdução do dendê e da pimenta malagueta | técnica de temperar com condimentos
+            que dão cor/sabor | preparo de pirões, farofas e cozidos africanos | Culinária ritual ('comida
+            de santo/comida dos orixás') | fritura em dendê | oferendas culinárias aos orixás | Adaptação
+            forçada às condições da escravidão | técnicas ancestrais de agricultura aplicadas nas hortas
+            coloniais | reaproveitamento das sobras da Casa Grande | Origem do acarajé (Nigéria/África
+            Ocidental) | fritura em dendê quente | bater massa para aerar | Preparo de molhos à base de
+            folhas ácidas (cuxá), fusão com técnicas árabes e portuguesas
+          livros_fonte: 'APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); CAPACITAÇÃO CHEF - COZINHA
+            BRASILEIRA (Nicolau Rosa); GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO HISTÓRICO
+            (Tomazoni)'
+          confiabilidade: 🟢 Confirmado em várias fontes
+          macrogrupo: não classificado
+          grupo: não classificado
+          ordem_taxonomica: não classificado
+          familia: não classificado
+          classe: Povo/Etnia Formadora
+          categoria: Grupo Sociocultural
+          subcategoria: não classificado nesta rodada
+          nome_pt: Africanos (Diáspora Escravizada)
+          _links:
+            ingredientes: /v1/povos/POV-000001/ingredientes
+            receitas: /v1/povos/POV-000001/receitas
+            patrimonio: /v1/povos/POV-000001/patrimonio
+    Territorio:
+      type: object
+      description: 'Territorio do Corpus Fundador. Origem: aba ''5. Catálogo Territórios'' (Especificação
+        Conceitual, Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - estado
+      - livros_fonte
+      - confiabilidade
+      - macrogrupo
+      - grupo
+      - ordem_taxonomica
+      - familia
+      - classe
+      - categoria
+      - subcategoria
+      - nome_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        estado:
+          type: string
+        bioma_texto:
+          type:
+          - string
+          - 'null'
+        ingredientes:
+          type:
+          - string
+          - 'null'
+        receitas:
+          type:
+          - string
+          - 'null'
+        produtos_tradicionais:
+          type:
+          - string
+          - 'null'
+        livros_fonte:
+          type: string
+        liv_id:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        macrogrupo:
+          type: string
+        grupo:
+          type: string
+        ordem_taxonomica:
+          type: string
+        familia:
+          type: string
+        classe:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+        latitude:
+          type:
+          - number
+          - 'null'
+        longitude:
+          type:
+          - number
+          - 'null'
+        bounding_box:
+          type:
+          - string
+          - 'null'
+          description: GeoJSON BBox [minLon,minLat,maxLon,maxLat].
+        geometry:
+          type:
+          - string
+          - 'null'
+          description: GeoJSON Polygon/MultiPolygon (RFC 7946).
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type:
+          - string
+          - 'null'
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: TER-000001
+        uuid: 7e1979a2-114a-47ff-8c32-6a83f451683b
+        slug: amazonas
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        estado: Amazonas
+        bioma_texto: Floresta Amazônica
+        ingredientes: Tucupi, jambu, mandioca, peixes de escamas (pirarucu, tambaqui, tucunaré), guaraná,
+          castanha-do-pará
+        receitas: Pato no Tucupi, Tacacá, Caldeirada de Tucunaré
+        produtos_tradicionais: Tacacá vendido em barraquinhas às 17h; preferência por peixe de escamas
+          (tabu contra peixe 'liso'); farinhas regionais
+        livros_fonte: 'GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO HISTÓRICO (Tomazoni)'
+        confiabilidade: 🟡 Confirmado em uma única fonte
+        macrogrupo: não classificado
+        grupo: não classificado
+        ordem_taxonomica: não classificado
+        familia: não classificado
+        classe: Unidade Geopolítica
+        categoria: Unidade Federativa
+        subcategoria: Estado
+        nome_pt: Amazonas
+        _links:
+          receitas: /v1/territorios/TER-000001/receitas
+          ingredientes: /v1/territorios/TER-000001/ingredientes
+          biomas: /v1/territorios/TER-000001/biomas
+    PaginaTerritorio:
+      type: object
+      description: Página de territorios.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Territorio'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: TER-000001
+          uuid: 7e1979a2-114a-47ff-8c32-6a83f451683b
+          slug: amazonas
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          estado: Amazonas
+          bioma_texto: Floresta Amazônica
+          ingredientes: Tucupi, jambu, mandioca, peixes de escamas (pirarucu, tambaqui, tucunaré), guaraná,
+            castanha-do-pará
+          receitas: Pato no Tucupi, Tacacá, Caldeirada de Tucunaré
+          produtos_tradicionais: Tacacá vendido em barraquinhas às 17h; preferência por peixe de escamas
+            (tabu contra peixe 'liso'); farinhas regionais
+          livros_fonte: 'GASTRONOMIA BRASILEIRA: OLHARES PARA ORIGEM E CONTEXTO HISTÓRICO (Tomazoni)'
+          confiabilidade: 🟡 Confirmado em uma única fonte
+          macrogrupo: não classificado
+          grupo: não classificado
+          ordem_taxonomica: não classificado
+          familia: não classificado
+          classe: Unidade Geopolítica
+          categoria: Unidade Federativa
+          subcategoria: Estado
+          nome_pt: Amazonas
+          _links:
+            receitas: /v1/territorios/TER-000001/receitas
+            ingredientes: /v1/territorios/TER-000001/ingredientes
+            biomas: /v1/territorios/TER-000001/biomas
+    Bioma:
+      type: object
+      description: 'Bioma do Corpus Fundador. Origem: aba ''12. Catálogo Biomas'' (Especificação Conceitual,
+        Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - nome
+      - descricao
+      - fonte
+      - oficial_ibge
+      - nome_pt
+      - descricao_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        nome:
+          type: string
+        descricao:
+          type: string
+        territorios_associados_n:
+          type:
+          - integer
+          - 'null'
+        ingredientes_associados_n:
+          type:
+          - integer
+          - 'null'
+        fonte:
+          type: string
+        oficial_ibge:
+          type: boolean
+          description: false para o bioma extra-oficial BIO-000007 (Zona Costeira/Litoral), true para
+            os 6 biomas oficiais do IBGE. Especificação Conceitual, Seção 2.6.
+        latitude:
+          type:
+          - number
+          - 'null'
+        longitude:
+          type:
+          - number
+          - 'null'
+        bounding_box:
+          type:
+          - string
+          - 'null'
+          description: GeoJSON BBox [minLon,minLat,maxLon,maxLat].
+        geometry:
+          type:
+          - string
+          - 'null'
+          description: GeoJSON Polygon/MultiPolygon (RFC 7946).
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type: string
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: BIO-000001
+        uuid: a8118cce-358e-4ff6-afbc-022ffd0db955
+        slug: amazonia
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        nome: Amazônia
+        descricao: Maior bioma brasileiro, floresta tropical úmida da bacia amazônica; base da culinária
+          ribeirinha e indígena do Norte.
+        territorios_associados_n: 3
+        ingredientes_associados_n: 16
+        fonte: Consolidado a partir dos campos Bioma das Abas 1 e 5 (Corpus Fundador v1.0) + nomenclatura
+          oficial dos 6 biomas do IBGE
+        oficial_ibge: true
+        nome_pt: Amazônia
+        descricao_pt: Maior bioma brasileiro, floresta tropical úmida da bacia amazônica; base da culinária
+          ribeirinha e indígena do Norte.
+        _links:
+          territorios: /v1/biomas/BIO-000001/territorios
+          ingredientes: /v1/biomas/BIO-000001/ingredientes
+    PaginaBioma:
+      type: object
+      description: Página de biomas.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bioma'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: BIO-000001
+          uuid: a8118cce-358e-4ff6-afbc-022ffd0db955
+          slug: amazonia
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          nome: Amazônia
+          descricao: Maior bioma brasileiro, floresta tropical úmida da bacia amazônica; base da culinária
+            ribeirinha e indígena do Norte.
+          territorios_associados_n: 3
+          ingredientes_associados_n: 16
+          fonte: Consolidado a partir dos campos Bioma das Abas 1 e 5 (Corpus Fundador v1.0) + nomenclatura
+            oficial dos 6 biomas do IBGE
+          oficial_ibge: true
+          nome_pt: Amazônia
+          descricao_pt: Maior bioma brasileiro, floresta tropical úmida da bacia amazônica; base da culinária
+            ribeirinha e indígena do Norte.
+          _links:
+            territorios: /v1/biomas/BIO-000001/territorios
+            ingredientes: /v1/biomas/BIO-000001/ingredientes
+    Patrimonio:
+      type: object
+      description: 'Patrimonio do Corpus Fundador. Origem: aba ''6. Catálogo Patrimônio'' (Especificação
+        Conceitual, Seção 7). Todo campo corresponde 1:1 a uma coluna do Dicionário de Dados v1.2.'
+      required:
+      - uuid
+      - slug
+      - created_at
+      - updated_at
+      - version
+      - categoria
+      - elemento
+      - descricao
+      - livros_fonte
+      - confiabilidade
+      - macrogrupo
+      - grupo
+      - ordem_taxonomica
+      - familia
+      - classe
+      - subcategoria
+      - nome_pt
+      - descricao_pt
+      properties:
+        id:
+          type:
+          - string
+          - 'null'
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        uuid:
+          type: string
+          format: uuid
+          description: Identificador universal imutável, UUID v4. Seção 5.
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          description: Identificador amigável para URL, kebab-case. Seção 7.
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp de criação, imutável. Seção 4.
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp da última alteração. Seção 4.
+        version:
+          type: integer
+          description: Contador de versão do objeto, inicia em 1. Seções 4 e 6.
+        categoria:
+          type: string
+        elemento:
+          type: string
+        descricao:
+          type: string
+        povo_regiao_relacionada:
+          type:
+          - string
+          - 'null'
+        livros_fonte:
+          type: string
+        liv_id:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        macrogrupo:
+          type: string
+        grupo:
+          type: string
+        ordem_taxonomica:
+          type: string
+        familia:
+          type: string
+        classe:
+          type: string
+        subcategoria:
+          type: string
+        nome_pt:
+          type: string
+        nome_en:
+          type:
+          - string
+          - 'null'
+        nome_es:
+          type:
+          - string
+          - 'null'
+        nome_fr:
+          type:
+          - string
+          - 'null'
+        nome_it:
+          type:
+          - string
+          - 'null'
+        nome_de:
+          type:
+          - string
+          - 'null'
+        nome_ja:
+          type:
+          - string
+          - 'null'
+        nome_zh:
+          type:
+          - string
+          - 'null'
+        descricao_pt:
+          type: string
+        descricao_en:
+          type:
+          - string
+          - 'null'
+        descricao_es:
+          type:
+          - string
+          - 'null'
+        _links:
+          type: object
+          description: URLs dos sub-recursos de navegação, resolvidos pelo banco de grafo.
+          additionalProperties:
+            type: string
+            format: uri-reference
+      additionalProperties: false
+      example:
+        id: PAT-000001
+        uuid: 6e8a22a8-761b-4019-b614-65cd125eface
+        slug: bebida-de-pimenta-dos-caiapos-cabinda
+        created_at: '2026-08-05T00:00:00Z'
+        updated_at: '2026-08-05T00:00:00Z'
+        version: 1
+        categoria: Ritual
+        elemento: Bebida de pimenta dos caiapós / Cabinda
+        descricao: 'Consumo ritualizado de pimentas em bebidas: os índios caiapós de Goiás preparavam
+          uma bebida à base de pimentas, assim como havia na Bahia uma bebida de origem africana chamada
+          Cabinda, também apimentada.'
+        povo_regiao_relacionada: Indígenas (caiapós) / Africanos (Bahia)
+        livros_fonte: CAPACITAÇÃO CHEF - COZINHA BRASILEIRA (Nicolau Rosa)
+        confiabilidade: 🟡 Confirmado em uma única fonte
+        macrogrupo: não classificado
+        grupo: não classificado
+        ordem_taxonomica: não classificado
+        familia: não classificado
+        classe: Patrimônio Cultural Imaterial
+        subcategoria: Ritual
+        nome_pt: Bebida de pimenta dos caiapós / Cabinda
+        descricao_pt: 'Consumo ritualizado de pimentas em bebidas: os índios caiapós de Goiás preparavam
+          uma bebida à base de pimentas, assim como havia na Bahia uma bebida de origem africana chamada
+          Cabinda, também apimentada.'
+        _links:
+          povos_territorios: /v1/patrimonio/PAT-000001/povos_territorios
+    PaginaPatrimonio:
+      type: object
+      description: Página de patrimonio.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patrimonio'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: PAT-000001
+          uuid: 6e8a22a8-761b-4019-b614-65cd125eface
+          slug: bebida-de-pimenta-dos-caiapos-cabinda
+          created_at: '2026-08-05T00:00:00Z'
+          updated_at: '2026-08-05T00:00:00Z'
+          version: 1
+          categoria: Ritual
+          elemento: Bebida de pimenta dos caiapós / Cabinda
+          descricao: 'Consumo ritualizado de pimentas em bebidas: os índios caiapós de Goiás preparavam
+            uma bebida à base de pimentas, assim como havia na Bahia uma bebida de origem africana chamada
+            Cabinda, também apimentada.'
+          povo_regiao_relacionada: Indígenas (caiapós) / Africanos (Bahia)
+          livros_fonte: CAPACITAÇÃO CHEF - COZINHA BRASILEIRA (Nicolau Rosa)
+          confiabilidade: 🟡 Confirmado em uma única fonte
+          macrogrupo: não classificado
+          grupo: não classificado
+          ordem_taxonomica: não classificado
+          familia: não classificado
+          classe: Patrimônio Cultural Imaterial
+          subcategoria: Ritual
+          nome_pt: Bebida de pimenta dos caiapós / Cabinda
+          descricao_pt: 'Consumo ritualizado de pimentas em bebidas: os índios caiapós de Goiás preparavam
+            uma bebida à base de pimentas, assim como havia na Bahia uma bebida de origem africana chamada
+            Cabinda, também apimentada.'
+          _links:
+            povos_territorios: /v1/patrimonio/PAT-000001/povos_territorios
+    Relacao:
+      type: object
+      description: Aresta da camada RELACOES. Peso, confiabilidade e proveniência são propriedades da
+        própria relação — Dicionário v1.2, Seção 20.
+      required:
+      - origem_id
+      - destino_id
+      - tipo_relacao
+      - observacoes
+      - data_criacao
+      - peso
+      - metodo_calculo_peso
+      properties:
+        rel_id:
+          type:
+          - string
+          - 'null'
+        origem_id:
+          type: string
+        destino_id:
+          type: string
+        tipo_relacao:
+          type: string
+          enum:
+          - USA_INGREDIENTE
+          - ASSOCIADO_A_POVO
+          - CULTIVADO_EM
+          - UTILIZA_TECNICA
+          - PREPARADO_COM
+          - OCORRE_EM
+          - ORIGINARIO_DE
+          - PATRIMONIO_DE
+          - LOCALIZADO_EM_BIOMA
+          - DERIVA_DE
+          - VARIANTE_REGIONAL
+          - SIMILAR_A
+        fonte:
+          type:
+          - string
+          - 'null'
+        pagina:
+          type:
+          - string
+          - 'null'
+        confiabilidade:
+          type:
+          - string
+          - 'null'
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        observacoes:
+          type: string
+        data_criacao:
+          type: string
+          format: date
+        peso:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Peso da relação, de 0.0 a 1.0. Seção 20.
+        metodo_calculo_peso:
+          type: string
+          description: Como o peso foi obtido. Seção 20.2.
+      additionalProperties: false
+      example:
+        rel_id: REL-000001
+        origem_id: REC-000001
+        destino_id: ING-000010
+        tipo_relacao: USA_INGREDIENTE
+        fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); COZINHA BRASILEIRA (Senac-SP,
+          2007)
+        pagina: ver Aba 7 (citação do ingrediente)
+        confiabilidade: 🟢 Confirmado em várias fontes
+        observacoes: Reconstruído da junção Receita-Ingrediente do Corpus Fundador v1.0 (Aba 8).
+        data_criacao: '2026-08-05'
+        peso: 0.95
+        metodo_calculo_peso: Inicializado a partir do mapeamento determinístico de confiabilidade (🟢 Confirmado
+          em várias fontes), Dicionário v1.2 Seção 20.2
+    PaginaRelacao:
+      type: object
+      description: Página de relações.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Relacao'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - rel_id: REL-000001
+          origem_id: REC-000001
+          destino_id: ING-000010
+          tipo_relacao: USA_INGREDIENTE
+          fonte: APOSTILA COZINHA/CULINÁRIA BRASILEIRA (Fichas Técnicas); COZINHA BRASILEIRA (Senac-SP,
+            2007)
+          pagina: ver Aba 7 (citação do ingrediente)
+          confiabilidade: 🟢 Confirmado em várias fontes
+          observacoes: Reconstruído da junção Receita-Ingrediente do Corpus Fundador v1.0 (Aba 8).
+          data_criacao: '2026-08-05'
+          peso: 0.95
+          metodo_calculo_peso: Inicializado a partir do mapeamento determinístico de confiabilidade (🟢
+            Confirmado em várias fontes), Dicionário v1.2 Seção 20.2
+    ResultadoBusca:
+      type: object
+      description: Item heterogêneo da busca global. O campo `tipo` diz de qual catálogo o resultado veio
+        — Especificação Conceitual, Seção 4.
+      required:
+      - id
+      - tipo
+      - nome
+      - confiabilidade
+      properties:
+        id:
+          type: string
+          description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+        tipo:
+          type: string
+          enum:
+          - ingrediente
+          - receita
+          - tecnica
+          - povo
+          - territorio
+          - bioma
+          - patrimonio
+        nome:
+          type: string
+          description: Nome em português do objeto.
+        descricao:
+          type:
+          - string
+          - 'null'
+        slug:
+          type: string
+        confiabilidade:
+          type: string
+          description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+        score:
+          type: number
+          format: double
+          description: Relevância devolvida pelo índice full-text do grafo.
+      additionalProperties: false
+      example:
+        id: ING-000031
+        tipo: ingrediente
+        nome: Cebola
+        slug: cebola
+        confiabilidade: 🟢 Confirmado em várias fontes
+        score: 3.14
+    PaginaBusca:
+      type: object
+      description: Página de resultados da busca global.
+      required:
+      - total
+      - page
+      - page_size
+      - items
+      properties:
+        total:
+          type: integer
+          description: Total de itens que casam com o filtro.
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultadoBusca'
+      additionalProperties: false
+      example:
+        total: 1
+        page: 1
+        page_size: 20
+        items:
+        - id: ING-000031
+          tipo: ingrediente
+          nome: Cebola
+          slug: cebola
+          confiabilidade: 🟢 Confirmado em várias fontes
+          score: 3.14
+    Erro:
+      type: object
+      description: Formato de erro padrão — Especificação Conceitual, Seção 5.3.
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - status
+          properties:
+            code:
+              type: string
+              enum:
+              - INVALID_PARAMETER
+              - NOT_FOUND
+              - REFERENTIAL_INTEGRITY_ERROR
+              - RATE_LIMIT_EXCEEDED
+              - INTERNAL_ERROR
+            message:
+              type: string
+            status:
+              type: integer
+          additionalProperties: false
+      additionalProperties: false
+      example:
+        error:
+          code: NOT_FOUND
+          message: Objeto com ID 'ING-999999' não encontrado.
+          status: 404
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Página, começando em 1. Seção 5.1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      example: 1
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      description: Itens por página. Máximo 100. Seção 5.1.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+    Sort:
+      name: sort
+      in: query
+      required: false
+      description: Campo de ordenação. Seção 5.2.
+      schema:
+        type: string
+      example: n_citacoes
+    Order:
+      name: order
+      in: query
+      required: false
+      description: Sentido da ordenação. Seção 5.2.
+      schema:
+        type: string
+        enum:
+        - asc
+        - desc
+        default: asc
+      example: desc
+    Expand:
+      name: expand
+      in: query
+      required: false
+      description: 'Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar.
+        Ex.: expand=receitas,territorios. Seção 1.'
+      schema:
+        type: string
+      example: receitas,povos
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Identificador legível, com prefixo da entidade. Dicionário v1.2, Seção 3.
+      schema:
+        type: string
+        pattern: ^(ING|REC|TEC|POV|TER|PAT|BIO|LIV)-[0-9]{6}$
+      example: ING-000031
+    Confiabilidade:
+      name: confiabilidade
+      in: query
+      required: false
+      description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji
+        (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+      schema:
+        type: string
+        enum:
+        - 🟢 Confirmado em várias fontes
+        - 🟡 Confirmado em uma única fonte
+        - 🔵 Inferido
+        - 🔴 Pendente de validação
+      example: 🟢 Confirmado em várias fontes
+    Q:
+      name: q
+      in: query
+      required: false
+      description: Busca textual nos campos de nome do recurso.
+      schema:
+        type: string
+      example: cebola
+    Categoria:
+      name: categoria
+      in: query
+      required: false
+      description: Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.
+      schema:
+        type: string
+    Subcategoria:
+      name: subcategoria
+      in: query
+      required: false
+      description: Filtra pela subcategoria taxonômica. Seção 9.
+      schema:
+        type: string
+    Bioma:
+      name: bioma
+      in: query
+      required: false
+      description: Filtra por bioma associado ao ingrediente.
+      schema:
+        type: string
+    Estado:
+      name: estado
+      in: query
+      required: false
+      description: Filtra pela unidade federativa.
+      schema:
+        type: string
+    Regiao:
+      name: regiao
+      in: query
+      required: false
+      description: Filtra pela região do país.
+      schema:
+        type: string
+    Classe:
+      name: classe
+      in: query
+      required: false
+      description: Classe do ingrediente. Especificação Conceitual, Seção 2.1.
+      schema:
+        type: string
+        enum:
+        - Vegetal
+        - Animal
+        - Processado/Outro
+      example: Vegetal
+    OficialIbge:
+      name: oficial_ibge
+      in: query
+      required: false
+      description: false para o bioma extra-oficial BIO-000007 (Zona Costeira/Litoral), true para os 6
+        biomas oficiais do IBGE. Especificação Conceitual, Seção 2.6.
+      schema:
+        type: boolean
+      example: true

@@ -1,0 +1,2542 @@
+{
+  "info": {
+    "name": "Roots of Brazil — API do Corpus Fundador v1.1.0",
+    "description": "Camada de acesso somente leitura ao Corpus Fundador v1.1.\n\nGerada a partir de `api/openapi.yaml` por `api/gerar_postman.py` — não editar à mão, a edição se perde na próxima geração.\n\nSem chave de API: a coleção não define autenticação porque a API não exige nenhuma. Limite de 100 requisições por minuto por IP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string",
+      "description": "Raiz da API. Trocar para o ambiente desejado."
+    }
+  ],
+  "item": [
+    {
+      "name": "Ingrediente",
+      "item": [
+        {
+          "name": "Lista ingredientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/ingredientes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ingredientes"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "",
+                  "description": "Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "subcategoria",
+                  "value": "",
+                  "description": "Filtra pela subcategoria taxonômica. Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "classe",
+                  "value": "Vegetal",
+                  "description": "Classe do ingrediente. Especificação Conceitual, Seção 2.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "bioma",
+                  "value": "",
+                  "description": "Filtra por bioma associado ao ingrediente.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de ingredientes, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de ingrediente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/ingredientes/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ingredientes",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um ingrediente pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingrediente → receitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/ingredientes/ING-000031/receitas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ingredientes",
+                "ING-000031",
+                "receitas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Receitas que usam este ingrediente. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `USA_INGREDIENTE` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingrediente → territorios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/ingredientes/ING-000031/territorios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ingredientes",
+                "ING-000031",
+                "territorios"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Territórios onde o ingrediente é cultivado. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `CULTIVADO_EM` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingrediente → povos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/ingredientes/ING-000031/povos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "ingredientes",
+                "ING-000031",
+                "povos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Povos associados ao ingrediente ou dos quais ele é originário. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `ASSOCIADO_A_POVO`, `ORIGINARIO_DE` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '1. Catálogo Ingredientes'."
+    },
+    {
+      "name": "Receita",
+      "item": [
+        {
+          "name": "Lista receitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/receitas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "receitas"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "",
+                  "description": "Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "estado",
+                  "value": "",
+                  "description": "Filtra pela unidade federativa.",
+                  "disabled": true
+                },
+                {
+                  "key": "regiao",
+                  "value": "",
+                  "description": "Filtra pela região do país.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de receitas, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de receita",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/receitas/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "receitas",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um receita pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receita → ingredientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/receitas/ING-000031/ingredientes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "receitas",
+                "ING-000031",
+                "ingredientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Ingredientes da receita. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `USA_INGREDIENTE` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receita → tecnicas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/receitas/ING-000031/tecnicas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "receitas",
+                "ING-000031",
+                "tecnicas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Técnicas empregadas no preparo. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `UTILIZA_TECNICA` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receita → territorio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/receitas/ING-000031/territorio",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "receitas",
+                "ING-000031",
+                "territorio"
+              ],
+              "query": []
+            },
+            "description": "Território de origem da receita. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `OCORRE_EM` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receita → povos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/receitas/ING-000031/povos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "receitas",
+                "ING-000031",
+                "povos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Povos de influência cultural. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `ASSOCIADO_A_POVO` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '2. Catálogo Receitas'."
+    },
+    {
+      "name": "Tecnica",
+      "item": [
+        {
+          "name": "Lista tecnicas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tecnicas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "tecnicas"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "",
+                  "description": "Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "subcategoria",
+                  "value": "",
+                  "description": "Filtra pela subcategoria taxonômica. Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de tecnicas, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de tecnica",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tecnicas/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "tecnicas",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um tecnica pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tecnica → ingredientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tecnicas/ING-000031/ingredientes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "tecnicas",
+                "ING-000031",
+                "ingredientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Ingredientes preparados com esta técnica. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `PREPARADO_COM` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tecnica → receitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/tecnicas/ING-000031/receitas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "tecnicas",
+                "ING-000031",
+                "receitas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Receitas que empregam esta técnica. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `UTILIZA_TECNICA` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '3. Catálogo Técnicas'."
+    },
+    {
+      "name": "Povo",
+      "item": [
+        {
+          "name": "Lista povos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/povos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "povos"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "",
+                  "description": "Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "regiao",
+                  "value": "",
+                  "description": "Filtra pela região do país.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de povos, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de povo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/povos/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "povos",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um povo pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Povo → ingredientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/povos/ING-000031/ingredientes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "povos",
+                "ING-000031",
+                "ingredientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Ingredientes associados ao povo ou dele originários. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `ASSOCIADO_A_POVO`, `ORIGINARIO_DE` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Povo → receitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/povos/ING-000031/receitas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "povos",
+                "ING-000031",
+                "receitas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Receitas associadas ao povo. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `ASSOCIADO_A_POVO` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Povo → patrimonio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/povos/ING-000031/patrimonio",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "povos",
+                "ING-000031",
+                "patrimonio"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Itens de patrimônio do povo. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `PATRIMONIO_DE` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '4. Catálogo Povos'."
+    },
+    {
+      "name": "Territorio",
+      "item": [
+        {
+          "name": "Lista territorios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/territorios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "territorios"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "",
+                  "description": "Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de territorios, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de territorio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/territorios/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "territorios",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um territorio pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Territorio → receitas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/territorios/ING-000031/receitas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "territorios",
+                "ING-000031",
+                "receitas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Receitas que ocorrem no território. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `OCORRE_EM` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Territorio → ingredientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/territorios/ING-000031/ingredientes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "territorios",
+                "ING-000031",
+                "ingredientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Ingredientes cultivados no território. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `CULTIVADO_EM` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Territorio → biomas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/territorios/ING-000031/biomas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "territorios",
+                "ING-000031",
+                "biomas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Biomas em que o território se localiza. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `LOCALIZADO_EM_BIOMA` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '5. Catálogo Territórios'."
+    },
+    {
+      "name": "Bioma",
+      "item": [
+        {
+          "name": "Lista biomas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/biomas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "biomas"
+              ],
+              "query": [
+                {
+                  "key": "oficial_ibge",
+                  "value": "True",
+                  "description": "false para o bioma extra-oficial BIO-000007 (Zona Costeira/Litoral), true para os 6 biomas oficiais do IBGE. Especificação Conceitual, Seção 2.6.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de biomas, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de bioma",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/biomas/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "biomas",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um bioma pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bioma → territorios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/biomas/ING-000031/territorios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "biomas",
+                "ING-000031",
+                "territorios"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Territórios localizados neste bioma. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `LOCALIZADO_EM_BIOMA` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bioma → ingredientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/biomas/ING-000031/ingredientes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "biomas",
+                "ING-000031",
+                "ingredientes"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Ingredientes originários deste bioma. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `ORIGINARIO_DE` no sentido inverso. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '12. Catálogo Biomas'."
+    },
+    {
+      "name": "Patrimonio",
+      "item": [
+        {
+          "name": "Lista patrimonio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/patrimonio",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "patrimonio"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "",
+                  "description": "Filtra pela categoria taxonômica. Dicionário v1.2, Seção 9.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "cebola",
+                  "description": "Busca textual nos campos de nome do recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "n_citacoes",
+                  "description": "Campo de ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sentido da ordenação. Seção 5.2.",
+                  "disabled": true
+                },
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listagem paginada de patrimonio, resolvida pelo **banco relacional** (Ordem 2). Filtros conforme a Especificação Conceitual, Seção 2."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalhe de patrimonio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/patrimonio/ING-000031",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "patrimonio",
+                "ING-000031"
+              ],
+              "query": [
+                {
+                  "key": "expand",
+                  "value": "receitas,povos",
+                  "description": "Lista separada por vírgula de relações a resolver inline, em vez de apenas linkar. Ex.: expand=receitas,territorios. Seção 1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Um patrimonio pelo ID legível, resolvido pelo **banco relacional** (Ordem 2). `_links` traz os sub-recursos de navegação."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patrimonio → povos_territorios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/patrimonio/ING-000031/povos_territorios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "patrimonio",
+                "ING-000031",
+                "povos_territorios"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Povos aos quais o item de patrimônio pertence. Resolvido pelo **banco de grafo** (Ordem 3), percorrendo `PATRIMONIO_DE` no sentido direto. Peso e proveniência de cada aresta vêm junto, em `_relacao`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '6. Catálogo Patrimônio'."
+    },
+    {
+      "name": "Relações",
+      "item": [
+        {
+          "name": "Lista relações",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/relacoes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "relacoes"
+              ],
+              "query": [
+                {
+                  "key": "origem_id",
+                  "value": "REC-000001",
+                  "description": "Filtra por ID de origem exato.",
+                  "disabled": true
+                },
+                {
+                  "key": "destino_id",
+                  "value": "ING-000010",
+                  "description": "Filtra por ID de destino exato.",
+                  "disabled": true
+                },
+                {
+                  "key": "tipo_relacao",
+                  "value": "USA_INGREDIENTE",
+                  "description": "Um dos 12 tipos da ontologia. Dicionário v1.2, Seção 21.",
+                  "disabled": true
+                },
+                {
+                  "key": "confiabilidade",
+                  "value": "🟢 Confirmado em várias fontes",
+                  "description": "Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após o emoji (ex.: '🔵 Inferido com cautela'), por isso filtros casam por prefixo.",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Acesso direto à camada RELACOES — Especificação Conceitual, Seção 3. Resolvido pelo **banco de grafo** (Ordem 3), que guarda peso, confiabilidade e proveniência como propriedades nativas da aresta."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Origem: aba '11. RELACOES'."
+    },
+    {
+      "name": "Busca",
+      "item": [
+        {
+          "name": "Busca global",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/busca",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "busca"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "mandioca",
+                  "description": "Termo de busca. Obrigatório.",
+                  "disabled": false
+                },
+                {
+                  "key": "tipos",
+                  "value": "ingrediente,receita",
+                  "description": "Lista separada por vírgula, para restringir os catálogos. Omitido, busca em todos.",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página, começando em 1. Seção 5.1.",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Itens por página. Máximo 100. Seção 5.1.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Busca textual multi-entidade — Especificação Conceitual, Seção 4. Resolvida pelo **índice full-text do banco de grafo** (`objeto_roots_nome_ft`, criado na carga da Ordem 3 sobre `nome_pt` e `descricao_pt`). Retorna itens heterogêneos, cada um com `tipo` indicando o catálogo de origem."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Busca global sobre o índice full-text do grafo."
+    },
+    {
+      "name": "Operação",
+      "item": [
+        {
+          "name": "Healthcheck",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": []
+            },
+            "description": "Liveness do serviço. Usado pelo healthcheck do docker-compose."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('responde JSON', () => pm.response.to.be.json);",
+                  "pm.test('traz ETag', () => pm.response.to.have.header('ETag'));",
+                  "pm.test('traz cota de uso', () =>",
+                  "  pm.response.to.have.header('X-RateLimit-Limit'));",
+                  "const corpo = pm.response.json();",
+                  "if ('items' in corpo) {",
+                  "  pm.test('envelope da Secao 5.1', () => {",
+                  "    pm.expect(corpo).to.have.all.keys('total','page','page_size','items');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints de infraestrutura."
+    }
+  ]
+}

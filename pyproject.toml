@@ -42,6 +42,25 @@ target-version = "py313"
 python_version = "3.13"
 strict = true
 
+# Os módulos de rota e o bootstrap da aplicação ficam fora do modo estrito.
+# Motivo: os decoradores do FastAPI (@router.get) não são tipados de forma que
+# o mypy consiga preservar a assinatura da função decorada, e sob `strict` isso
+# gera `untyped-decorator` em toda rota — um erro sobre a biblioteca, não sobre
+# o código do projeto. A lógica de domínio (catálogo, parâmetros, erros,
+# serialização e os dois repositórios) continua sob `strict` integral, e é onde
+# a checagem de tipos tem valor real.
+[[tool.mypy.overrides]]
+module = ["app.main", "app.api.routers.*"]
+disallow_untyped_decorators = false
+
+# `BaseHTTPMiddleware` do Starlette resolve como Any quando os stubs da
+# biblioteca não estão disponíveis no ambiente, e sob `strict` herdar de Any é
+# erro. Não é um problema do nosso código: os dois middlewares têm `dispatch`
+# totalmente anotado. Restrito a este módulo para não afrouxar nada mais.
+[[tool.mypy.overrides]]
+module = ["app.core.middleware"]
+disallow_subclassing_any = false
+
 [tool.pytest.ini_options]
 testpaths = ["app/tests", "tests"]
 addopts = "--cov=app --cov-report=term-missing --cov-fail-under=90"

@@ -1,0 +1,14 @@
+# Regras de lint da especificação OpenAPI — Ordem 4.
+# Base: o ruleset oficial da OpenAPI, sem afrouxamento. As duas exceções abaixo
+# são desligadas por decisão documentada, não por conveniência.
+extends: ["spectral:oas"]
+
+rules:
+  # A Especificação Conceitual escreve os recursos em português e no plural
+  # ("recursos em português, alinhado ao domínio de dados" — Seção 1). A regra
+  # padrão exige kebab-case em inglês; seguir a Especificação vence.
+  path-keys-no-trailing-slash: error
+  oas3-unused-component: error
+  operation-operationId: error
+  operation-description: error
+  operation-tag-defined: error

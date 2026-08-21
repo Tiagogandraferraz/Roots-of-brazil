@@ -1,0 +1,128 @@
+name: Contrato da API — Ordem 4
+
+# Roda a suíte de contrato COM o grafo alcançável. É o que falta no ambiente
+# local: sem Neo4j, os testes de navegação (Seção 2), o recurso de relações
+# (Seção 3) e a busca full-text (Seção 4) se pulam, e a cobertura fica abaixo
+# do alvo porque `app/repositories/grafo.py` não é exercitado.
+#
+# Não escreve nada no banco: a Ordem 4 é somente leitura, e o grafo já foi
+# carregado e verificado na Ordem 3.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "app/**"
+      - "tests/contract_tests/**"
+      - ".github/workflows/contrato_api.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contrato-api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contrato:
+    name: Spectral + contrato + cobertura
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      NEO4J_URI: ${{ secrets.NEO4J_URI }}
+      NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+      NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+      NEO4J_DATABASE: neo4j
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependências
+        run: |
+          pip install --quiet \
+            fastapi "uvicorn[standard]" httpx "neo4j>=5.24,<6" openpyxl \
+            pyyaml jsonschema matplotlib \
+            pytest pytest-cov ruff mypy types-PyYAML
+
+      - name: Instalar Spectral
+        run: npm install -g @stoplight/spectral-cli
+
+      - name: Gerar a fonte relacional a partir do corpus
+        run: python scripts/ordem2/etl.py Corpus_Fundador_v1.1.xlsx | tee ordem2.log
+
+      # --- O contrato ---
+      - name: Lint da especificação (Spectral)
+        # `--fail-severity=warn` porque um aviso do ruleset oficial da OpenAPI
+        # é, na prática, um defeito de contrato — não vale deixar passar.
+        run: spectral lint api/openapi.yaml --ruleset api/.spectral.yaml --fail-severity=warn
+
+      - name: A especificação está em dia com o catálogo
+        # Falha se alguém editou app/models/catalogo.py sem regerar o yaml —
+        # é o que impede o contrato publicado de divergir da implementação.
+        run: python api/gerar_openapi.py --check
+
+      - name: A Postman Collection está em dia com a especificação
+        run: python api/gerar_postman.py --check
+
+      # --- Qualidade do código ---
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Checagem de tipos (mypy)
+        run: mypy --ignore-missing-imports app/
+
+      # --- Testes ---
+      - name: Confirmar que o grafo está alcançável
+        # Sem isto, um secret errado faria os testes de grafo se pularem em
+        # silêncio e o job passaria sem validar metade da Ordem 4.
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          from app.database.neo4j import verifica_conectividade
+          if not verifica_conectividade():
+              print("::error::Neo4j inalcançável — os testes de navegação e busca "
+                    "seriam pulados e o job passaria sem validá-los.")
+              raise SystemExit(1)
+          print("Grafo alcançável: navegação e busca serão testadas de verdade.")
+          PY
+
+      - name: Suíte completa com cobertura
+        run: |
+          pytest tests/ app/tests -q \
+            --cov=app --cov-report=term-missing --cov-report=xml \
+            --cov-fail-under=90 | tee pytest.log
+
+      - name: Publicar resumo
+        if: always()
+        run: |
+          {
+            echo "## Ordem 4 — contrato da API"
+            echo
+            echo '```'
+            tail -40 pytest.log 2>/dev/null || echo "(testes não executados)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar relatórios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ordem4-contrato
+          path: |
+            coverage.xml
+            *.log
+          retention-days: 14
+          if-no-files-found: warn

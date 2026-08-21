@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Roots of Brazil — API do Corpus Fundador</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    body { margin: 0; background: #fafafa; }
+    .topbar { display: none; }
+    .cabecalho {
+      padding: 1.25rem 1.5rem; background: #1b4332; color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .cabecalho h1 { margin: 0 0 .25rem; font-size: 1.15rem; font-weight: 600; }
+    .cabecalho p { margin: 0; font-size: .85rem; opacity: .85; }
+  </style>
+</head>
+<body>
+  <div class="cabecalho">
+    <h1>Roots of Brazil — API do Corpus Fundador</h1>
+    <p>Somente leitura · 381 entidades · 1.585 relações · sem chave de API · 100 req/min por IP</p>
+  </div>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    // Aponta para o contrato revisado servido pela própria API, não para um
+    // gerado a partir do código.
+    window.ui = SwaggerUIBundle({
+      url: "/openapi.yaml",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      docExpansion: "none",
+      defaultModelsExpandDepth: 1,
+      tryItOutEnabled: true
+    });
+  </script>
+</body>
+</html>

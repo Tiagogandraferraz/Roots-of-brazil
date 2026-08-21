@@ -1,0 +1,4 @@
+Diretório exigido por app/core/logging.py (Ordem 0), que abre logs/audit.log na
+importação. Versionado vazio para que a API suba em um clone limpo — sem ele,
+`from app.main import app` falha com FileNotFoundError. Os .log em si são
+ignorados pelo .gitignore.

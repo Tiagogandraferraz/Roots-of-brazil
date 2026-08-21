@@ -14,3 +14,6 @@ nav:
       - Ordem 1 (Ontologia): relatorio_ordem1.md
       - Ordem 2 (Banco Relacional): relatorio_ordem2.md
       - Ordem 3 (Neo4j): relatorio_ordem3.md
+      - Ordem 4 (API): relatorio_ordem4.md
+  - Changelogs:
+      - Ordem 4: changelog_ordem4.md
