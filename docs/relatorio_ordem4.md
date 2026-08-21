@@ -77,8 +77,13 @@ falha se estiverem desatualizados (`--check`).
   relações) e do DDL da Ordem 2 (o tipo de cada campo). Um campo que não está no
   Dicionário não tem como aparecer no schema — a restrição "nenhum endpoint
   expõe campo ausente do Dicionário v1.2" fica garantida por construção.
-- Os **exemplos são lidos do corpus real carregado**, não inventados. O exemplo
-  de `Ingrediente` é a linha ING-000031 de verdade.
+- Os **exemplos são lidos do corpus real carregado**, com uma exceção: `uuid`.
+  O exemplo de `Ingrediente` é a linha ING-000031 de verdade em todos os
+  demais campos — nome, categoria, confiabilidade, contagem de citações.
+  `uuid` é um **placeholder determinístico**, derivado do ID legível por
+  `uuid5`, porque não existe na fonte v1.1: o ETL da Ordem 2 o gera a cada
+  carga com `uuid4()`. Ler o valor real tornaria o contrato não determinístico
+  — ver o achado 6.
 - A Postman Collection vem do contrato. Um endpoint novo aparece nos dois, ou em
   nenhum.
 
@@ -142,6 +147,30 @@ Faltava `app/__init__.py` desde a Ordem 0. O mypy resolvia
 `app/api/parametros.py` sob dois nomes de módulo e recusava rodar. Acrescentado.
 Também `logs/.gitkeep`: `app/core/logging.py` abre `logs/audit.log` na
 importação, e sem o diretório a API não sobe num clone limpo.
+
+### 6. O contrato gerado não era determinístico — reprovou o CI três vezes
+Defeito meu, encontrado pelo próprio portão que eu havia escrito. O passo
+`gerar_openapi.py --check` do workflow falhou em três execuções seguidas com
+`openapi.yaml está DESATUALIZADO`, sempre no mesmo ponto. Spectral passava.
+
+Causa: os exemplos embutiam `uuid`, e o ETL da Ordem 2 gera os UUIDs **no
+momento da carga** (`uuid4()` — o docstring do script diz que uuid e slug "não
+existem na fonte v1.1"). O workflow regenera o banco antes de conferir, então
+os 381 UUIDs eram outros e a comparação nunca podia passar — em máquina
+nenhuma que regenerasse a fonte.
+
+Diagnóstico fechado por diff: **88 linhas de divergência, 44 valores alterados,
+todos `uuid`**. Nenhum outro campo. `slug` é derivado do nome por `slugify` e
+`created_at`/`updated_at` são uma constante, então já eram estáveis.
+
+Corrigido derivando o `uuid` do exemplo por `uuid5` a partir do ID legível
+(`uuid_de_exemplo`). Verificado com `--check` contra **três bancos gerados
+independentemente**, com UUIDs diferentes entre si: os três passam.
+
+O que se perde: o `uuid` do exemplo não corresponde a registro real algum. Não
+haveria como preservar isso — o UUID real muda a cada carga, e os que estavam
+no contrato anterior vinham de um banco efêmero que já não existe. A afirmação
+"nenhum exemplo é inventado" foi corrigida acima para refletir a exceção.
 
 ## Decisões de modelagem
 1. **Parâmetros lidos de `request.query_params`, não declarados em assinatura.**

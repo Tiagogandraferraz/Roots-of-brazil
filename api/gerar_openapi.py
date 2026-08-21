@@ -12,8 +12,14 @@ Gerar em vez de escrever à mão não é preguiça: é o que garante dois crité
 de aceite por construção, em vez de por revisão. Primeiro, "nenhum endpoint
 expõe campo ausente do Dicionário v1.2" — um campo que não está no DDL não tem
 como aparecer no schema. Segundo, "todo schema com exemplo válido" — os
-exemplos são LIDOS DO CORPUS REAL carregado, então nenhum valor de exemplo é
-inventado.
+exemplos são LIDOS DO CORPUS REAL carregado.
+
+Exceção única e deliberada: `uuid`. Ele não existe na fonte v1.1 — é gerado
+pelo ETL da Ordem 2 a cada carga, com `uuid4()`. Ler esse valor tornava o
+contrato não determinístico e reprovava o `--check` em qualquer máquina que
+regenerasse o banco. No exemplo, `uuid` passa a ser derivado do ID legível por
+`uuid5` (ver `uuid_de_exemplo`). Todos os demais campos continuam vindo do
+corpus.
 
 Uso:
     python api/gerar_openapi.py                    # usa roots_of_brazil_dev.db
@@ -26,8 +32,9 @@ from __future__ import annotations
 import argparse
 import sqlite3
 import sys
+import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import yaml
 
@@ -85,6 +92,35 @@ DESCRICOES: dict[str, str] = {
 }
 
 
+#: Namespace fixo para os UUIDs de exemplo. Qualquer UUID constante serve como
+#: namespace; este foi sorteado uma vez e congelado aqui, e é o que torna
+#: `uuid_de_exemplo` reprodutível em qualquer máquina.
+NAMESPACE_EXEMPLO: Final = uuid.UUID("6f1c2a48-3d5b-4e77-9a10-8c4b2f0e5d31")
+
+
+def uuid_de_exemplo(id_legivel: str) -> str:
+    """UUID determinístico para o `example` do schema, derivado do ID legível.
+
+    Por que não usar o `uuid` real da linha, como se faz com os demais campos:
+    `scripts/ordem2/etl.py` **gera os UUIDs no momento da carga**, com
+    `uuid.uuid4()` — o próprio docstring dele diz que uuid e slug "não existem
+    na fonte v1.1". Cada execução do ETL produz 381 UUIDs novos.
+
+    Ler esse valor tornava o contrato gerado não determinístico: o CI regenera
+    o banco antes de conferir o `openapi.yaml` versionado, e a comparação
+    acusava divergência em todas as 44 ocorrências de `uuid` — em nada mais.
+    Foi o que reprovou o workflow "Contrato da API" três vezes seguidas.
+
+    `uuid5` resolve mantendo as propriedades que importam para um exemplo: o
+    valor é um UUID válido (satisfaz `format: uuid`), é diferente para cada
+    entidade, e é o mesmo em toda máquina. O que se perde é ele corresponder a
+    algum registro real — e não haveria como preservar isso, já que o UUID real
+    muda a cada carga. Está declarado no relatório da Ordem 4: os exemplos vêm
+    do corpus real, EXCETO `uuid`.
+    """
+    return str(uuid.uuid5(NAMESPACE_EXEMPLO, id_legivel))
+
+
 def tipo_sql_para_openapi(tipo: str) -> dict[str, Any]:
     return {"TEXT": {"type": "string"}, "INTEGER": {"type": "integer"},
             "REAL": {"type": "number"}}.get(tipo.upper(), {"type": "string"})
@@ -117,7 +153,11 @@ class Gerador:
     # --- exemplos vindos do corpus real -------------------------------
 
     def exemplo_de(self, recurso: Recurso) -> dict[str, Any]:
-        """Uma linha real do catálogo, virando o `example` do schema."""
+        """Uma linha real do catálogo, virando o `example` do schema.
+
+        Exceção única: `uuid`, que é substituído por um placeholder
+        determinístico (ver `uuid_de_exemplo`).
+        """
         linha = self.conn.execute(
             f"SELECT * FROM {recurso.tabela} WHERE id = ?", (recurso.exemplo_id,)
         ).fetchone()
@@ -134,6 +174,8 @@ class Gerador:
                 continue
             if campo == "oficial_ibge":
                 valor = bool(valor)
+            elif campo == "uuid":
+                valor = uuid_de_exemplo(str(linha["id"]))
             exemplo[campo] = valor
         exemplo["_links"] = {
             n.sub: f"/v1/{recurso.nome}/{linha['id']}/{n.sub}" for n in recurso.navegacoes
