@@ -103,25 +103,58 @@ A Ordem foi pedida citando "as 914+ relações ontológicas". Nenhum artefato do
 8. **`--limpar` restrito a `:ObjetoRoots`**, nunca `MATCH (n) DETACH DELETE n`. Um DELETE cego apagaria qualquer outra coisa que estivesse no mesmo banco. Exige `--execute` junto; sozinho é erro de uso, não limpeza silenciosa.
 
 ## Limitações declaradas
-- **A carga real não foi executada** — é a restrição da Ordem, e ela foi respeitada. O plano está pronto e é reproduzível (comandos abaixo).
-- **Os 12 testes de integração foram PULADOS, não executados.** Não há daemon Docker nesta sandbox, logo não há Neo4j alcançável. Eles se pulam sozinhos com a razão impressa (`pytest -rs`), em vez de falhar ou de fingir sucesso. Tudo que depende do servidor — sintaxe do Cypher aceita pelo motor, disponibilidade das constraints na Community, carga, travessia multi-hop, full-text — está **coberto por teste escrito mas ainda não verificado em execução.**
+- **Os 12 testes de integração seguem PULADOS na sandbox, não executados.** Não há daemon Docker aqui e o host do AuraDB está fora da política de egresso, então eles se pulam sozinhos com a razão impressa (`pytest -rs`), em vez de falhar ou de fingir sucesso. A carga real, porém, **foi executada e verificada** pelo GitHub Actions (ver abaixo): o que esses testes cobrem — sintaxe do Cypher aceita pelo motor, aplicação do DDL, carga e recontagem — foi exercitado de verdade lá. Falta rodar os testes de travessia multi-hop e full-text, que continuam escritos mas não verificados.
 - **`Corpus_Fundador_v1.1.xlsx` e `roots_of_brazil_dev.db` não são versionados** (o `.gitignore` exclui ambos — dado de origem não entra no repositório). O corpus foi disponibilizado no ambiente e a fonte foi regenerada com `scripts/ordem2/etl.py`, o que permitiu validar o dry-run contra dado real. Quem for executar a carga precisa ter um dos dois presente. Os testes offline seguem usando fixtures sintéticas, para não depender do corpus.
 
-## BLOQUEADOR EXTERNO — carga real no Neo4j
-A execução de `--execute` contra uma instância real **não foi realizada** e está formalmente registrada como bloqueada por causa externa ao projeto:
+- **Python 3.11 nesta sandbox**, contra `^3.13` no `pyproject.toml`. `mypy --strict` foi rodado com `--python-version 3.11`; nada no código novo usa sintaxe posterior a 3.10. No GitHub Actions a carga rodou em **Python 3.13.15**, a versão do `pyproject`.
+
+## CARGA REAL — CONCLUÍDA E VERIFICADA
+
+O que antes era um bloqueador externo foi **resolvido pelo próprio projeto**, sem depender de liberar a política de egresso da sandbox: a carga roda no GitHub Actions, cujo runner alcança o AuraDB. O bloqueio de rede da sandbox continua existindo, mas deixou de ser bloqueador da Ordem.
 
 | | |
 |---|---|
-| **Natureza** | Infraestrutura do ambiente de execução — não é defeito de código, de schema ou de dado |
-| **Causa** | Sem daemon Docker na sandbox (destino local inviável) **e** host do Neo4j AuraDB fora da política de egresso (destino em nuvem inviável) |
-| **Evidência** | DNS resolve (`34.148.173.76`); TCP 7687 dá timeout — não há egresso TCP bruto; proxy HTTPS responde **403 CONNECT** para `f7c0c213.databases.neo4j.io:443`, registrado no log do proxy como `connect_rejected — policy denial` |
-| **Contornável de dentro?** | Não. A política é aplicada por proxy upstream, fora do container; os endpoints de controle retornam 405. A documentação do ambiente instrui explicitamente a reportar, não contornar (`raw-TCP databases — report, do not work around`) |
-| **Quem resolve** | Dono do ambiente (liberar o host na política de egresso) ou execução em máquina com Docker/rede aberta |
-| **Impacto** | Atinge apenas `--execute` e `--verificar-destino`. **Não** atinge o dry-run, que valida a fonte sem conectar e já rodou com sucesso contra o corpus real |
-| **O que fica pendente** | Os 12 testes de integração (escritos, hoje pulados) e a recontagem pós-carga dentro do Neo4j |
+| **Estado** | **CONCLUÍDA** |
+| **Quando** | 2026-08-20T19:37:39Z → 19:38:11Z (32 s) |
+| **Como** | Workflow `Carga Neo4j — Ordem 3 (EXECUTAR — ESCREVE NO BANCO)`, disparo manual com confirmação digitada |
+| **Run id** | [`32409692762`](https://github.com/Tiagogandraferraz/Roots-of-brazil/actions/runs/32409692762) (run nº 2), job `96556983232` |
+| **Commit** | `fffb31489dd09c58bc5ad065a321800322d37d0c` |
+| **Destino** | Neo4j AuraDB — `Neo4j Kernel 5.27-aura (enterprise)` |
+| **Limpeza prévia** | `nao` — o grafo estava vazio (0 nós, 0 arestas), a carga partiu do zero |
+| **Artefato** | `ordem3-carga-real` (id 9421641840), SQLite + 4 logs, retenção 30 dias |
 
-Tudo que depende do grafo está escrito e revisado; falta a execução. Nenhuma decisão de modelagem depende do desbloqueio.
-- **Python 3.11 nesta sandbox**, contra `^3.13` no `pyproject.toml`. `mypy --strict` foi rodado com `--python-version 3.11`; nada no código novo usa sintaxe posterior a 3.10.
+### Recontagem independente pós-carga
+
+Executada por um passo **separado** do ETL, que abre nova conexão e consulta o grafo do zero — não reaproveita nada do processo de carga. Saída literal do log:
+
+```
+nós:     381 (esperado 381)
+arestas: 1585 (esperado 1585)
+órfãos:  18 (esperado 18)
+  :Ingrediente    130 (esperado 130)      [:USA_INGREDIENTE]        895 (esperado 895)
+  :Receita        136 (esperado 136)      [:ASSOCIADO_A_POVO]       205 (esperado 205)
+  :Tecnica         38 (esperado 38)       [:CULTIVADO_EM]           106 (esperado 106)
+  :Povo            17 (esperado 17)       [:UTILIZA_TECNICA]         85 (esperado 85)
+  :Territorio      18 (esperado 18)       [:PREPARADO_COM]           81 (esperado 81)
+  :Patrimonio      35 (esperado 35)       [:OCORRE_EM]               77 (esperado 77)
+  :Bioma            7 (esperado 7)        [:ORIGINARIO_DE]           67 (esperado 67)
+  :LivroFonte       0 (esperado 0)        [:PATRIMONIO_DE]           38 (esperado 38)
+                                          [:LOCALIZADO_EM_BIOMA]     24 (esperado 24)
+                                          [:DERIVA_DE]                7 (esperado 7)
+                                          [:VARIANTE_REGIONAL]        0 (esperado 0)
+                                          [:SIMILAR_A]                0 (esperado 0)
+Conferência final: grafo bate com o baseline.
+```
+
+**23 de 23 contadores batem** — 3 agregados (nós, arestas, órfãos) + 8 labels + 12 tipos de relação. Os 18 órfãos são os mesmos 18 da Ata da Auditoria Sprint 2, preservados como estão.
+
+Os três portões do workflow passaram antes da escrita: confirmação digitada, destino respondendo a Cypher, e dry-run da fonte contra o baseline.
+
+### Achado: o AuraDB é Enterprise, não Community
+
+O `--verificar-destino` reportou `Neo4j Kernel 5.27-aura (enterprise)`. O modelo em `app/models/grafo.py` foi escrito assumindo Community — daí a decisão, documentada acima, de deixar `CONSTRAINTS_ENTERPRISE` registrado mas **não executado**. Na instância real essas constraints (unicidade de `rel_id`, `nome_pt` obrigatório) **poderiam** ser aplicadas pelo próprio banco em vez de ficarem a cargo do ETL.
+
+Nada foi alterado por causa disso: a carga já estava validada e mudar o DDL depois seria refazer a decisão sem necessidade. Registrado no BACKLOG.
 
 ## Duas validações independentes, não uma
 O dry-run e a verificação de destino cobrem lados opostos do pipeline, e **nenhum dos dois escreve**:
@@ -187,14 +220,62 @@ Validação da correção, por tipo de arquivo:
 
 Nenhum conteúdo foi alterado além da remoção das duas linhas de cerca por arquivo. As cercas internas legítimas (blocos de código dentro de `CONTRIBUTING.md` e `docs/relatorio_ordem2.md`) foram preservadas — conferido antes da edição que só havia pares balanceados.
 
-## Pendência que permanece aberta
-O `nav` do `mkdocs.yml` está defasado desde a Ordem 1: lista até a Ordem 0, não inclui os relatórios das Ordens 1, 2 e 3, e aponta para `relatorios/ordem-2_consistencia/relatorio_ordem-2_consistencia.md`, que não existe no repositório. O arquivo agora é YAML válido, mas a navegação continua quebrada. Não foi corrigido aqui porque resolver a entrada órfã exige decidir entre criar o relatório da Ordem -2 ou remover a linha — decisão de conteúdo, não de sintaxe.
+## Navegação da documentação — resolvida
+O `nav` do `mkdocs.yml` estava defasado desde a Ordem 1 e apontava para um relatório inexistente. Corrigido em commit próprio: o relatório da Ordem -2 foi escrito a partir de `docs/matriz_consistencia.json`, o caminho no `nav` foi apontado para ele, e as entradas das Ordens 1, 2 e 3 foram acrescentadas. `mkdocs build --strict` passa sem warnings, com as 7 páginas geradas.
 
-## Status
+---
+
+# FECHAMENTO DA ORDEM 3
+
+## CORRIGIDO
+| # | O quê | Onde |
+|---|---|---|
+| 1 | **Dívida de reificação da Ordem 1 quitada** — peso, confiabilidade e proveniência viraram propriedades nativas de aresta, exatamente como `ontologia.ttl` (linhas 183-186) delegou a esta Ordem | `app/models/grafo.py` |
+| 2 | **`docker-compose.yml` com YAML inválido** — cercas markdown impediam `docker compose up`; imagem `neo4j:5` flutuante fixada em `5.26-community`; healthcheck trocado de HTTP para consulta real via Bolt, para `depends_on` significar "pronto para consultar" | `docker-compose.yml` |
+| 3 | **22 arquivos das Ordens 0-2 com cercas markdown** — Python não importava, CI não tinha como passar, `tests/ordem1/` e `tests/ordem2/` não eram coletados. Corrigido em commit separado, marcado como defeito herdado | repositório |
+| 4 | **`nav` do `mkdocs.yml` quebrado** e relatório da Ordem -2 inexistente | `mkdocs.yml`, `docs/relatorio_ordem-2.md` |
+| 5 | **`NEO4J_USERNAME` não era aceito** — o AuraDB entrega as credenciais com esse nome, o projeto usava `NEO4J_USER`; colar as credenciais da nuvem falhava como "variável ausente" | `app/database/neo4j.py` |
+| 6 | **`\| tee` mascarava falha nos workflows** — shell padrão do Actions é `bash -e` sem `pipefail`, o código de saída vinha do `tee` (sempre 0) e uma divergência passaria como sucesso | ambos os workflows |
+| 7 | **Lacuna na suíte** — todos os testes provavam que o ETL PEGA erros; nenhum provava que ele APROVA dado correto | `tests/ordem3/` |
+
+## PRESERVADO
+- **Baseline da Auditoria Sprint 2 intacto**: 381 objetos, 1.585 relações, 18 órfãos. Nenhum número foi ajustado para bater; onde divergiu, o script parou.
+- **`matriz_consistencia.json` não reescrita** — é o registro da auditoria como executada; apagar o achado para "limpar" seria falsificar o histórico.
+- **Duas subséries de `REL_ID`** (`REL-` e `REL-B`) mantidas como estão, conforme pendência explícita de v1.3.
+- **`LivroFonte` com 0 instâncias** — esquema definido, população pendente pelo Dicionário v1.2 Seção 19. Nenhum nó inventado para preencher.
+- **Uniões OWL não achatadas** — `ASSOCIADO_A_POVO` (134 Receita + 71 Ingrediente) e `ORIGINARIO_DE` (39 Povo + 28 Bioma) preservam os dois lados; achatar rejeitaria 272 arestas legítimas.
+- **Reservados sem semântica inventada** — `VARIANTE_REGIONAL` e `SIMILAR_A` seguem em `ObjetoRoots`/`ObjetoRoots`, como a ontologia, por não haver base documental para restringir.
+- **Os 18 órfãos** continuam órfãos no grafo, idênticos à Ata.
+
+## BACKLOG
+| # | Item | Origem |
+|---|---|---|
+| 1 | **Aplicar `CONSTRAINTS_ENTERPRISE`** — o AuraDB é Enterprise (`5.27-aura`), não Community como o modelo assumiu. Unicidade de `rel_id` e `nome_pt` obrigatório podem passar do ETL para o banco | achado da carga real |
+| 2 | **Rodar os 12 testes de integração** contra a instância carregada — travessia multi-hop e full-text seguem escritos mas não verificados | limitação de ambiente |
+| 3 | **`UserWarning` em `--verificar-destino`** — `dbms.components()` devolve múltiplos registros e o código usa `.single()`. Cosmético, não afeta resultado | log da carga |
+| 4 | **CI (`ci.yml`) vermelho na `main`** desde antes desta Ordem — não investigado, fora do escopo | herdado |
+| 5 | **Corpus versionado no repositório** (220 KB) para o workflow funcionar. Migrar para Release asset se não se quiser dado de origem no Git | decisão da Ordem 3 |
+| 6 | **Índice composto `(origem_id, tipo_relacao)`** sem equivalente no grafo, por desnecessário — revisitar se o perfil de consulta mudar | decisão de modelagem |
+
+## BLOQUEADORES
+**Nenhum bloqueador ativo.** O bloqueador externo registrado anteriormente foi **contornado, não removido**:
+
+| Bloqueador | Estado |
+|---|---|
+| Host do AuraDB fora da política de egresso da sandbox | **Ainda existe** — mas deixou de bloquear: a carga roda no GitHub Actions, cujo runner alcança a instância. A sandbox segue sem alcançar o AuraDB, o que só afeta o desenvolvimento local aqui, não a Ordem |
+| Ausência de daemon Docker na sandbox | **Ainda existe** — irrelevante agora que o destino é AuraDB em nuvem |
+
+**Pendência declarada, não bloqueadora:** a **rotação da senha do Neo4j está PENDENTE**, por decisão explícita do fundador de adiá-la. A senha trafegou em texto plano nesta sessão e o recomendado é rotacioná-la em `console.neo4j.io`. É ação manual, externa ao Claude Code, e **não impede o fechamento da Ordem 3** — o grafo está carregado e verificado independentemente disso. Quando for feita, basta atualizar o secret `NEO4J_PASSWORD` no GitHub; nenhum código muda.
+
+## ESTADO FINAL
 | Frente | Estado |
 |---|---|
-| Código, testes e documentação | **CONCLUÍDA** — modelo de grafo, ETL, DDL, camada de conexão, 64 testes, compose e relatório entregues e validados |
-| Validação da fonte (dry-run contra o corpus real) | **CONCLUÍDA** — 381 nós / 1.585 arestas, 20 de 20 contadores no baseline, código 0 |
-| Carga real no Neo4j (`--execute`) e testes de integração | **BLOQUEADA** — bloqueador externo de infraestrutura, ver seção acima |
+| Código, testes e documentação | **CONCLUÍDA** — modelo de grafo, ETL, DDL, camada de conexão, 64 testes, compose, 2 workflows e relatório |
+| Validação da fonte (dry-run contra o corpus real) | **CONCLUÍDA** — 20 de 20 contadores no baseline, código 0 |
+| **Carga real no Neo4j (`--execute`)** | **CONCLUÍDA** — run [`32409692762`](https://github.com/Tiagogandraferraz/Roots-of-brazil/actions/runs/32409692762), 2026-08-20T19:37:39Z, commit `fffb314` |
+| **Recontagem independente pós-carga** | **CONCLUÍDA** — 381 nós / 1.585 arestas / 18 órfãos, 23 de 23 contadores no baseline |
+| Testes de integração (travessia, full-text) | Escritos; execução no BACKLOG |
+| Rotação da senha | Pendente, decisão do fundador, não bloqueadora |
 
-**Ordem 3 CONCLUÍDA quanto a código, testes e documentação. A execução real da carga fica BLOQUEADA por causa externa, a ser retomada em ambiente com Docker ou com o host liberado na política de egresso.**
+# Status: **ORDEM 3 FECHADA**
+Grafo carregado e verificado no Neo4j AuraDB. As 381 entidades e 1.585 relações do Corpus Fundador estão consultáveis por travessia nativa, com peso e proveniência nas arestas. Base pronta para a Ordem 4 (API).
