@@ -38,6 +38,20 @@ build-backend = "poetry.core.masonry.api"
 line-length = 100
 target-version = "py313"
 
+# O conjunto de regras é declarado explicitamente, em vez de herdado do padrão
+# da ferramenta. Sem isto o lint depende da versão do ruff instalada: o CI
+# instalava o ruff sem pin, pegou uma versão cujo padrão não inclui E402 mas
+# inclui RUF100, e reprovou com 45 erros de "unused noqa directive" nos
+# `# noqa: E402` — que aqui são legítimos e existem porque vários scripts
+# precisam ajustar sys.path antes de importar o pacote `app`.
+#
+# E4/E7/E9 + F é o conjunto clássico do ruff (pycodestyle essencial + Pyflakes).
+# E402 vem dentro de E4 e é o que dá sentido aos `# noqa: E402`. Declarado
+# assim, o mesmo comando produz o mesmo resultado em qualquer versão e para
+# qualquer pessoa — não só no CI.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true
