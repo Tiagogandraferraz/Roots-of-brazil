@@ -26,7 +26,7 @@ from typing import Final
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from app.api.erros import ErroAPI
@@ -113,13 +113,14 @@ class MiddlewareLimiteDeTaxa(BaseHTTPMiddleware):
                 "RATE_LIMIT_EXCEEDED",
                 f"Limite de {self.limitador.limite} requisições por minuto por IP excedido.",
             )
-            from starlette.responses import JSONResponse
-
-            resposta = JSONResponse(status_code=429, content=erro.corpo())
-            resposta.headers["Retry-After"] = str(espera)
-            resposta.headers["X-RateLimit-Limit"] = str(self.limitador.limite)
-            resposta.headers["X-RateLimit-Remaining"] = "0"
-            return resposta
+            # Variável própria para a resposta de recusa: reusar o mesmo nome da
+            # resposta do `call_next` fazia o mypy inferir `JSONResponse` para
+            # ela e recusar a atribuição seguinte, que é um `Response`.
+            recusada = JSONResponse(status_code=429, content=erro.corpo())
+            recusada.headers["Retry-After"] = str(espera)
+            recusada.headers["X-RateLimit-Limit"] = str(self.limitador.limite)
+            recusada.headers["X-RateLimit-Remaining"] = "0"
+            return recusada
 
         resposta = await call_next(request)
         resposta.headers["X-RateLimit-Limit"] = str(self.limitador.limite)
