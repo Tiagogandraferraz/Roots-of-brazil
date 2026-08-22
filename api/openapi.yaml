@@ -4333,7 +4333,6 @@ components:
       - id
       - tipo
       - nome
-      - confiabilidade
       properties:
         id:
           type: string
@@ -4358,9 +4357,12 @@ components:
         slug:
           type: string
         confiabilidade:
-          type: string
+          type:
+          - string
+          - 'null'
           description: 'Grau de certeza da informação. Seção 11. O valor pode trazer texto livre após
-            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo.'
+            o emoji (ex.: ''🔵 Inferido com cautela''), por isso filtros casam por prefixo. Nulo para Bioma,
+            único catálogo sem essa coluna no Dicionário v1.2.'
         score:
           type: number
           format: double

@@ -271,14 +271,24 @@ class Gerador:
                 "Item heterogêneo da busca global. O campo `tipo` diz de qual catálogo o "
                 "resultado veio — Especificação Conceitual, Seção 4."
             ),
-            "required": ["id", "tipo", "nome", "confiabilidade"],
+            # `confiabilidade` NÃO é obrigatório aqui, ao contrário do que
+            # acontece nos schemas de entidade: Bioma é o único dos 7 catálogos
+            # sem essa coluna no Dicionário v1.2, e a busca é heterogênea — um
+            # bioma pode aparecer no meio dos resultados. Declarar o campo como
+            # string obrigatória quebrava o contrato assim que um bioma casava
+            # com o termo buscado, o que a suíte contra o grafo real pegou.
+            "required": ["id", "tipo", "nome"],
             "properties": {
                 "id": {"type": "string", "description": DESCRICOES["id"]},
                 "tipo": {"type": "string", "enum": list(TIPOS_BUSCA)},
                 "nome": {"type": "string", "description": "Nome em português do objeto."},
                 "descricao": _nulavel({"type": "string"}),
                 "slug": {"type": "string"},
-                "confiabilidade": {"type": "string", "description": DESCRICOES["confiabilidade"]},
+                "confiabilidade": _nulavel({
+                    "type": "string",
+                    "description": DESCRICOES["confiabilidade"] + " Nulo para Bioma, "
+                    "único catálogo sem essa coluna no Dicionário v1.2.",
+                }),
                 "score": {
                     "type": "number", "format": "double",
                     "description": "Relevância devolvida pelo índice full-text do grafo.",

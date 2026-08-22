@@ -23,6 +23,10 @@ apenas para leitura — nada das Ordens 1-3 é alterado.
 
 from __future__ import annotations
 
+import atexit
+from collections.abc import Iterator
+from contextlib import contextmanager
+from threading import Lock
 from typing import Any, Final
 
 from app.models.catalogo import EMOJI_CONFIABILIDADE, Navegacao, Recurso
@@ -58,10 +62,69 @@ def _valida_tipos(tipos: tuple[str, ...]) -> str:
     return "|".join(tipos)
 
 
-def _sessao() -> Any:
-    from app.database.neo4j import sessao
+# --- Driver único, reusado entre requisições ---------------------------
+#
+# `app/database/neo4j.py` (Ordem 3) expõe um `sessao()` que CRIA e FECHA um
+# driver a cada chamada. Para um script de carga isso é correto: roda uma vez,
+# e fechar no fim é o esperado. Para uma API é caro — cada requisição pagaria o
+# handshake TLS e a busca da tabela de roteamento do `neo4j+s://` antes da
+# primeira consulta.
+#
+# O driver do Neo4j é feito para ser criado uma vez e reusado: ele já mantém
+# pool de conexões internamente e é seguro para uso concorrente. Por isso a
+# Ordem 4 mantém o seu próprio, aqui, em vez de chamar aquele `sessao()`.
+# `cria_driver` (Ordem 3) é reaproveitado para não duplicar a leitura de
+# configuração — nada daquele módulo é alterado.
 
-    return sessao()
+_driver: Any = None
+_banco: str = "neo4j"
+_trava_driver = Lock()
+
+
+def _obtem_driver() -> Any:
+    """Devolve o driver compartilhado, criando-o na primeira chamada.
+
+    Dupla checagem sob trava: sem ela, duas requisições simultâneas na
+    inicialização criariam dois drivers e um deles vazaria, mantendo conexões
+    abertas que ninguém fecha.
+    """
+    global _driver, _banco
+    if _driver is None:
+        with _trava_driver:
+            if _driver is None:
+                from app.database.neo4j import ConfiguracaoNeo4j, cria_driver
+
+                config = ConfiguracaoNeo4j.do_ambiente()
+                _banco = config.banco
+                _driver = cria_driver(config)
+    return _driver
+
+
+def fechar_driver() -> None:
+    """Fecha o driver compartilhado. Idempotente.
+
+    Chamado no encerramento do processo e pelos testes que precisam forçar
+    reconexão. Fora isso, o driver vive enquanto o processo viver.
+    """
+    global _driver
+    with _trava_driver:
+        if _driver is not None:
+            _driver.close()
+            _driver = None
+
+
+atexit.register(fechar_driver)
+
+
+@contextmanager
+def _sessao() -> Iterator[Any]:
+    """Abre uma sessão sobre o driver compartilhado.
+
+    A sessão é barata — é a conexão que não é. Abrir e fechar sessão a cada
+    consulta é o uso normal do driver; o que não se deve refazer é o driver.
+    """
+    with _obtem_driver().session(database=_banco) as sessao:
+        yield sessao
 
 
 def navegar(
